@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2E5A44">
+<title>Herbarium clinicum</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--paper:#E7EAE0;--surface:#F4F6EF;--surface2:#EEF1E7;--ink:#1C2621;--soft:#4A574F;--line:#CBD2C2;
+--green:#2E5A44;--green2:#6B8F71;--amber:#9C7526;--amberbg:#F1E7CF;--danger:#9A2E1C;--dangerbg:#F2DBD3;
+--info:#3A5A7A;--infobg:#DCE6EE;--nav:72px;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 'Inter',system-ui,-apple-system,sans-serif;
+padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased}
+h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:29px;line-height:1.1;margin:0 0 8px;letter-spacing:-.3px}
+h2{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:20px;margin:0}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.latin{font-family:'IBM Plex Mono',ui-monospace,monospace;font-style:italic;font-size:12px;color:var(--green2)}
+.soft{color:var(--soft)}
+.eyebrow{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--green);margin:0 0 6px}
+.lede{color:var(--soft);font-size:14px;margin:0 0 18px}
+header.top{background:var(--surface);border-bottom:1px solid var(--line);padding:calc(12px + env(safe-area-inset-top)) 18px 12px;
+display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20}
+.mark{font-size:22px;color:var(--green);line-height:1}
+.brandn{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:16px}
+.brands{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+main{padding:22px 18px 30px;max-width:760px;margin:0 auto}
+nav.bot{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav) + env(safe-area-inset-bottom));
+padding-bottom:env(safe-area-inset-bottom);background:var(--surface);border-top:1px solid var(--line);
+display:flex;z-index:30}
+nav.bot button{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;
+gap:3px;font:11px 'Inter',system-ui,sans-serif;color:var(--soft);cursor:pointer;padding:8px 2px}
+nav.bot button .ic{font-size:19px;line-height:1}
+nav.bot button.on{color:var(--green);font-weight:600}
+input,textarea,select{font:15px 'Inter',system-ui,sans-serif;color:var(--ink);background:var(--surface);
+border:1.5px solid var(--line);border-radius:11px;padding:13px 15px;width:100%;outline:none}
+input:focus,textarea:focus{border-color:var(--green)}
+input::placeholder{color:#9AA695}
+.search{font-family:Fraunces,Georgia,serif;font-size:18px}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
+.chip{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--green);background:var(--surface2);
+border:1px solid var(--line);border-radius:18px;padding:6px 12px;cursor:pointer;width:auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 17px;margin-bottom:12px;cursor:pointer}
+.card:active{border-color:var(--green2)}
+.cname{font-family:Fraunces,Georgia,serif;font-size:19px;font-weight:600;line-height:1.15}
+.cind{margin-top:9px;font-weight:600;color:var(--green);font-size:14px}
+.cexp{margin:5px 0 0;font-size:13px;color:var(--soft)}
+.csrc{margin:5px 0 0;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--green2)}
+.ctop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.flags{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.flag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.03em;padding:3px 7px;
+border-radius:5px;text-transform:uppercase;font-weight:500}
+.f-danger{background:var(--dangerbg);color:var(--danger)}
+.f-caution{background:var(--amberbg);color:var(--amber)}
+.f-info{background:var(--infobg);color:var(--info)}
+.f-safe{background:#DDEBDD;color:var(--green)}
+.ev{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0}
+.evb{display:inline-flex;gap:2.5px;align-items:flex-end}
+.evbar{width:5px;height:14px;border-radius:2px;border:1px solid var(--green2);background:transparent}
+.evbar.on{background:var(--green);border-color:var(--green)}
+.evtag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--soft)}
+.legend{margin-top:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.legend summary{padding:12px 15px;font-size:13px;color:var(--soft);cursor:pointer;list-style:none;display:flex;gap:8px;align-items:center}
+.legend summary::-webkit-details-marker{display:none}
+.legend-in{padding:2px 15px 14px;border-top:1px solid var(--line)}
+.lrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:12px;color:var(--soft)}
+.lrow:first-child{border-top:none}
+.lrow b{color:var(--ink)}
+.ltag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;width:72px;flex-shrink:0}
+.lfoot{font-size:11.5px;color:var(--soft);font-style:italic;margin:10px 0 0;padding-top:10px;border-top:1px solid var(--line)}
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin:4px -18px 18px;padding:0 18px 2px;
+-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{font:13.5px 'Inter',system-ui,sans-serif;color:var(--soft);background:none;border:none;padding:9px 12px;cursor:pointer;
+border-bottom:2px solid transparent;margin-bottom:-3px;white-space:nowrap}
+.tab.on{color:var(--green);border-bottom-color:var(--green);font-weight:600}
+.block{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 17px;margin-bottom:14px}
+.btitle{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+color:var(--green);margin:0 0 10px;font-weight:500}
+.block p{margin:0 0 7px;font-size:14px}
+.block p:last-child{margin-bottom:0}
+.block ul{margin:0;padding-left:17px;font-size:14px}
+.block li{margin:4px 0}
+.ind{padding:11px 0;border-top:1px solid var(--line)}
+.ind:first-child{border-top:none;padding-top:0}
+.indtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.indname{font-weight:600;font-size:14px}
+.pair{border-radius:11px;padding:13px 14px;border:1px solid var(--line);background:var(--surface);margin-bottom:9px}
+.p-danger{border-color:var(--danger);background:var(--dangerbg)}
+.p-caution{border-color:#D9BE7E;background:var(--amberbg)}
+.ptop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ptop b{font-family:Fraunces,Georgia,serif;font-size:15px}
+.tox{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;text-transform:uppercase;padding:3px 7px;border-radius:5px;white-space:nowrap}
+.t-d{background:var(--danger);color:#fff}.t-c{background:#D9BE7E;color:#5C4413}.t-s{background:var(--green2);color:#fff}
+.pnote{margin:7px 0 0;font-size:12.5px}
+.banner{background:var(--dangerbg);border:1px solid var(--danger);color:var(--danger);border-radius:11px;
+padding:13px 15px;font-size:13.5px;font-weight:500;margin-bottom:12px}
+.banner-i{background:var(--infobg);border-color:var(--info);color:var(--info)}
+.back{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--green);background:none;border:none;
+padding:0;margin-bottom:12px;cursor:pointer;width:auto}
+.calm{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:18px}
+.cm{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--soft);background:var(--surface);
+border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;width:auto;flex:1;min-width:44px}
+.cm.on{background:var(--green);color:#fff;border-color:var(--green);font-weight:600}
+.corgan{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--green);background:var(--surface2);
+padding:3px 7px;border-radius:5px}
+.strip{display:flex;gap:2px;margin:9px 0 7px}
+.cell{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;flex:1;height:20px;display:flex;align-items:center;
+justify-content:center;border-radius:4px;background:var(--surface2);color:var(--soft);border:1px solid var(--line)}
+.cell.on{background:var(--green2);color:#fff;border-color:var(--green2)}
+.cell.now{outline:2px solid var(--green);outline-offset:1px}
+.cell.on.now{background:var(--green)}
+.btn{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#fff;background:var(--green);
+border:1px solid var(--green);border-radius:9px;padding:11px 15px;cursor:pointer;width:auto;display:inline-block;text-align:center}
+.btn-o{color:var(--green);background:var(--surface);border-color:var(--green2)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.msg{padding:12px 15px;border-radius:10px;font-size:13px;margin:12px 0}
+.msg.ok{background:#DDEBDD;color:var(--green);border:1px solid var(--green2)}
+.msg.err{background:var(--dangerbg);color:var(--danger);border:1px solid var(--danger)}
+.empty{padding:16px;background:var(--surface2);border:1px dashed var(--line);border-radius:11px;color:var(--soft);font-size:14px}
+.photos{display:flex;gap:9px;flex-wrap:wrap;margin-top:9px}
+.ph{position:relative;width:88px;height:88px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.phx{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:none;
+background:rgba(28,38,33,.72);color:#fff;font-size:15px;line-height:1;cursor:pointer;padding:0}
+.itag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;text-transform:uppercase;background:var(--infobg);
+color:var(--info);padding:2px 5px;border-radius:4px;vertical-align:middle}
+.hero{background:var(--green);color:#fff;border-radius:16px;padding:20px;margin-bottom:16px}
+.hero h1{color:#fff;margin-bottom:6px}
+.hero p{margin:0;font-size:13.5px;opacity:.85}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:15px;cursor:pointer;text-align:left}
+.tile .ic{font-size:20px}
+.tile b{display:block;font-family:Fraunces,Georgia,serif;font-size:15px;margin:6px 0 2px}
+.tile span{font-size:12px;color:var(--soft)}
+@media(min-width:700px){.cards2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cards2 .card{margin-bottom:0}}
+</style>
+</head>
+<body>
+<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · Bodensee</div></div></header>
+<main id="app"></main>
+<nav class="bot">
+<button data-v="home" class="on"><span class="ic">✽</span>Start</button>
+<button data-v="search"><span class="ic">⌕</span>Nutzen</button>
+<button data-v="cal"><span class="ic">☷</span>Ernte</button>
+<button data-v="reg"><span class="ic">⚠</span>Register</button>
+<button data-v="cat"><span class="ic">☰</span>Katalog</button>
+</nav>
+<script>
+const HERBS=[{"id":"salvia-officinalis","common":"Salbei","latin":"Salvia officinalis L.","family":"Lamiaceae","part":["Blatt","ätherisches Öl"],"feat":["Gegenständige, längliche, graugrün-filzige Blätter mit runzelig-netzartiger Oberfläche","Vierkantiger Stängel (typisch Lamiaceae)","Intensiv würzig-kampferartiger Geruch beim Zerreiben","Blau-violette Lippenblüten in Scheinquirlen"],"season":"Blüte Mai bis Juli","habitat":"Sonnig, trocken, kalkhaltig, durchlässig; mediterrane Herkunft","conf":[{"n":"Wiesensalbei","l":"Salvia pratensis","t":"essbar","tox":"","note":"heimisch, aromaärmer; keine toxische Verwechslung"}],"chem":{"g":["ätherisches Öl (mind. 0,1% m/m, oft 1-2,5%)","Gerbstoffe (Rosmarinsäure, Phenolcarbonsäuren)","Flavonoide","Diterpene (Carnosol, Carnosolsäure)","Triterpene"],"lead":"α-/β-Thujon, 1,8-Cineol, Campher, Borneol (im Öl)","sol":"gemischt: ätherisches Öl lipophil/flüchtig (Alkohol/Öl), Gerbstoffe + Rosmarinsäure wasserlöslich (Tee/Infus)"},"ind":[{"c":"Übermäßiges Schwitzen / Hitzewallungen","s":["Schwitzen","Hyperhidrose","Hitzewallungen","Nachtschweiß","Schweiß"],"tag":"TU/ESCOP+","exp":"moderater spürbarer Effekt bei manchen; kein Ersatz bei relevanten Hitzewallungen z. B. unter Tamoxifen","src":"HMPC traditional use; ESCOP+ (Hyperhidrose/Hitzewallungen)"},{"c":"Dyspeptische Beschwerden","s":["Verdauungsbeschwerden","Blähungen","Sodbrennen","Völlegefühl","Magenbeschwerden"],"tag":"TU/ESCOP+","exp":"symptomatische Linderung plausibel, Evidenz schwach","src":"HMPC traditional use; ESCOP+; Kommission E (Schwitzen)"},{"c":"Entzündungen Mund-/Rachenschleimhaut","s":["Halsschmerzen","Rachenentzündung","Pharyngitis","Halsweh","Zahnfleischentzündung","Gingivitis","wunder Hals","Mundschleimhautentzündung"],"tag":"TU/ESCOP+","exp":"sinnvolle risikoarme Lokaltherapie bei leichter Pharyngitis/Gingivitis; symptomatisch, nicht kurativ","src":"HMPC traditional use; ESCOP+; Kommission E (dyspept. Beschwerden)"},{"c":"Herpes labialis (topisch)","s":["Herpes","Lippenherpes","Fieberbläschen"],"tag":"PRÄ/TRAD","exp":"bestenfalls unterstützend; kein Ersatz für Aciclovir","src":"In-vitro-Daten (Antiherpes); klinisch dünn"},{"c":"Kognition / Gedächtnis","s":["Gedächtnis","Konzentration","Kognition"],"tag":"PRÄ","exp":"nicht als Nootropikum belegt; Erwartung niedrig halten","src":"präklinisch (Cholinesterase-Hemmung); kleine Studien"},{"c":"Blutzucker / Blutfette","s":["Blutzucker","Diabetes","Blutfette","Cholesterin"],"tag":"PRÄ","exp":"keine therapeutische Erwartung","src":"präklinisch"}],"expect":{"ok":"lokale adstringierend-entzündungshemmende Wirkung Mund/Rachen; antihidrotischer Effekt bei manchen","no":"systemische Wirkung auf Kognition, Blutzucker, Blutfette; antivirale Heilwirkung"},"prep":{"f":["Gurgeln/Mundspülung: warmer Aufguss (Gerbstoffe + etwas Öl), abgedeckt ziehen","innerlich bei Schwitzen: Tee oder standardisierter Extrakt","ätherisch-öl-betont: alkoholischer Auszug/Tinktur (Öl lipophil)"],"why":"Gerbstoffe wasserlöslich → Tee/Gurgeln; ätherisches Öl lipophil/flüchtig → Tinktur, Aufguss abgedeckt","dose":"Trockenextrakt ca. 320 mg auf 3-4 Gaben; Tee: übliche Teelöffel-Droge/Tasse mehrmals täglich"},"safe":{"ceil":"Thujon neurotoxisch: akzeptierte Tagesaufnahme ca. 5,0 mg/Person für max. 2 Wochen; thujonarme Chemotypen bevorzugen","ci":["Überempfindlichkeit","Vorsicht bei Epilepsie (Thujon senkt Krampfschwelle)"],"preg":"innerliche arzneiliche Anwendung meiden (Thujon; traditionell milchreduzierend); Küchenmengen unproblematisch","int":["theoretisch additiv mit krampfschwellensenkenden Substanzen (Thujon) [gering bei Blattdroge in üblicher Dosis]","theoretisch additiv mit Antidiabetika/Antihypertonika [klinisch gering, als theoretische Möglichkeit vermerkt]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":true,"interaction_heavy":false,"toxin_ceiling":true,"asteraceae_allergy":false,"topical_only":false,"high_safety":false,"toxin_type":"Thujon","lowers_seizure_threshold":true},"warn":"Sicherheitsfrage ist fast vollständig eine Thujon-Dosis-Dauer-Frage (v. a. Öl, Dauergebrauch), nicht Verwechslung oder Toxin der ganzen Pflanze"},"harv":{"t":"Blätter vor bis zu Blühbeginn, trockener Vormittag nach Abtrocknen des Taus (höchster Ölgehalt)","m":[5,6],"o":"Blatt","st":"getrocknet ganz (nicht zerrieben), dicht + lichtgeschützt; Wirkverlust über ~1 Jahr; erst vor Gebrauch zerkleinern"},"gard":{"site":"vollsonnig, durchlässig, eher mager, kalkverträglich; Staunässe meiden","hard":"gut winterhart, verholzt; Frühjahrsrückschnitt (nicht zu tief ins alte Holz)","prop":"Aussaat ab Frühjahr, einfacher über Stecklinge/Teilung","bs":"sehr gut; pflegeleichte Einstiegspflanze, insektenfreundlich"}},{"id":"allium-ursinum","common":"Bärlauch","latin":"Allium ursinum L.","family":"Amaryllidaceae","part":["Blatt","Blüte","Zwiebel"],"feat":["Jedes Blatt hat einen eigenen Stiel, entspringt einzeln aus dem Boden","Matte Blattunterseite mit deutlicher Mittelrippe","Knoblauchgeruch beim Zerreiben (aber trügerisch, siehe Regeln)","Weiche, empfindliche Blätter","Weiße sternförmige Doldenblüten ab Mitte April"],"season":"Blätter Anfang März bis Mitte Mai; Blüte ab Mitte April","habitat":"Halbschattige, feuchte, nährstoffreiche Laub- und Auwälder; nicht auf offenen Wiesen","conf":[{"n":"Herbstzeitlose","l":"Colchicum autumnale","t":"lebensgefaehrlich","tox":"Colchicin","note":"Blätter ungestielt, aus Rosette, Scheide am Grund; geruchlos; glänzende Unterseite; eher Wiesen"},{"n":"Maiglöckchen","l":"Convallaria majalis","t":"giftig","tox":"Herzglykoside","note":"zwei Blätter an gemeinsamem umfassten Stängel; glänzende Unterseite; geruchlos; tritt oft später aus"},{"n":"Gefleckter Aronstab","l":"Arum maculatum","t":"giftig","tox":"Calciumoxalat, Scharfstoffe","note":"pfeilförmig, netznervig (nicht parallelnervig), oft dunkle Flecken; kein Knoblauchgeruch"},{"n":"Salomonssiegel/Weißwurz","l":"Polygonatum spp.","t":"giftig","tox":"","note":"Blätter wechselständig am aufrechten Stängel; kein Knoblauchgeruch"}],"chem":{"g":["schwefelhaltige Cysteinsulfoxide (Alliin)","Flavonoide","γ-Glutamylpeptide","ätherisches Öl (gering)"],"lead":"Allicin (entsteht beim Zerreiben aus Alliin via Alliinase)","sol":"Allicin instabil, licht-/hitze-/lagerungsempfindlich; frisch am wirksamsten"},"ind":[{"c":"Kardiovaskuläre Unterstützung","s":["Blutdruck","Cholesterin","Blutfette","Herz-Kreislauf"],"tag":"PRÄ/TRAD","exp":"allenfalls milde unterstützende Ernährungswirkung, kein Medikamentenersatz","src":"aus Allium sativum extrapoliert; kaum eigene klinische Daten"},{"c":"Antimikrobiell","s":["Infektabwehr","Bakterien"],"tag":"PRÄ","exp":"klinisch nicht belegt","src":"In-vitro-Daten (Thiosulfinate)"},{"c":"Verdauungsförderung / Frühjahrskur","s":["Verdauung","Entschlackung","Frühjahrskur"],"tag":"TRAD","exp":"symptomatisch/kulinarisch, keine spezifische Heilwirkung","src":"traditionelle Anwendung"}],"expect":{"ok":"gesundes nährstoffreiches Frühlingsgemüse, mildes knoblauchartiges Profil","no":"gezielte Therapie von Blutdruck/Cholesterin/Entgiftung (für A. ursinum nicht belegt)"},"prep":{"f":["frisch (Pesto, Salat, roh)","Küchenwürze"],"why":"schwefelaktive Wirkstoffe hitze-/lagerungsempfindlich → frisch verwenden","dose":"keine etablierte Arzneidosis; Anwendung kulinarisch"},"safe":{"ceil":"Pflanze selbst als Lebensmittel unbedenklich; Risiko liegt vollständig in der Verwechslung","ci":[],"preg":"als Lebensmittel unproblematisch","int":["theoretisch additiv mit Thrombozytenaggregationshemmern/Antikoagulanzien (wie Knoblauch) [in Küchenmengen irrelevant, für Bärlauch nicht belegt]"],"flags":{"deadly_confusion":true,"pregnancy_contraindicated":false,"interaction_heavy":false,"toxin_ceiling":false,"asteraceae_allergy":false,"topical_only":false,"high_safety":false},"warn":"Das Risiko ist ein Bestimmungsrisiko, kein pharmakologisches. Verwechslungs-Abschnitt hat Vorrang."},"harv":{"t":"März bis vor Blühbeginn (ca. Mitte April)","m":[3,4],"o":"Blatt","st":"frisch nur wenige Tage kühl; Einfrieren/Pesto zur Haltbarmachung; Trocknen nicht empfohlen"},"gard":{"site":"halbschattig bis schattig, humos, feucht, unter Sträuchern/Hecken","hard":"voll winterhart, Geophyt (zieht nach Blüte ein)","prop":"Kaltkeimer; einfacher über Zwiebeln/Teilung; breitet sich flächig aus","bs":"sehr gut; eigener Anbau eliminiert Verwechslungsrisiko (kein Maiglöckchen danebensetzen)"}},{"id":"hypericum-perforatum","common":"Johanniskraut","latin":"Hypericum perforatum L.","family":"Hypericaceae","part":["Kraut (blühende Triebspitzen)"],"feat":["Goldgelbe fünfzählige Blüten, Staubblätter büschelig","Blätter mit durchscheinenden Öldrüsen ('perforiert' gegen Licht betrachtet)","Schwarze Drüsenpunkte an Blütenrändern; roter Farbstoff (Hypericin) beim Zerreiben der Blüte","Zweikantiger Stängel"],"season":"Blüte Juni bis August (um Johanni, 24. Juni)","habitat":"Trockene, sonnige Standorte: Wegränder, Böschungen, Magerwiesen","conf":[{"n":"Andere Hypericum-Arten (z. B. Behaartes/Geflügeltes Johanniskraut)","l":"Hypericum spp.","t":"gering giftig / unwirksam","tox":"","note":"H. perforatum: zweikantiger Stängel + durchscheinende Öldrüsen; andere Arten wirkstoffärmer, für Arzneigebrauch ungeeignet"}],"chem":{"g":["Naphthodianthrone (Hypericin, Pseudohypericin)","Phloroglucine (Hyperforin)","Flavonoide (Hyperosid, Rutin, Quercetin)","Gerbstoffe"],"lead":"Hyperforin (Interaktionen, teils Wirkung), Hypericin (Photosensibilisierung)","sol":"Standardisierte Trockenextrakte; Hyperforin-Gehalt schwankt stark je Präparat und ist der Schlüssel für das Interaktionsprofil"},"ind":[{"c":"Leichte bis mittelschwere depressive Episode","s":["Depression","depressive Verstimmung","Niedergeschlagenheit","leichte Depression","Stimmungstief"],"tag":"WEU","exp":"Bei leichter-mittelschwerer Depression wirksam belegt. NICHT bei schwerer Depression. Interaktionsrisiko schränkt Einsatz stark ein.","src":"HMPC well-established use; Cochrane Review (leichte-mittelschwere Depression)"},{"c":"Nervöse Unruhe / psychovegetative Beschwerden","s":["Unruhe","innere Anspannung","nervöse Erschöpfung"],"tag":"TU","exp":"Milde traditionelle Anwendung; schwächer belegt als die Depressionsindikation.","src":"HMPC traditional use (Teezubereitung)"},{"c":"Kleinere Wunden / Verbrennungen (topisch, Rotöl)","s":["Wundheilung","Verbrennung","Muskelschmerzen","Rotöl","Johanniskrautöl"],"tag":"TU","exp":"Traditionelle Lokalanwendung; Vorsicht Photosensibilisierung bei Sonnenexposition.","src":"HMPC traditional use (topisch, Rotöl)"}],"expect":{"ok":"Wirksames Phytopharmakon bei leichter-mittelschwerer Depression (WEU) — die stärkste Evidenz im bisherigen Kern-Katalog","no":"Harmloses 'Naturheilmittel ohne Nebenwirkungen' — falsch: es ist der klinisch bedeutsamste Interaktionspartner unter den Heilkräutern"},"prep":{"f":["standardisierter Trockenextrakt (Fertigarzneimittel)","Tee (traditionell, schwächer)","Rotöl/Ölmazerat (topisch)"],"why":"Für die belegte antidepressive Wirkung standardisierte Extrakte nötig; Selbstherstellung nicht standardisierbar","dose":"je Präparat (typisch 300-900 mg Extrakt/Tag); Wirkeintritt verzögert (2-4 Wochen)"},"safe":{"ceil":"Photosensibilisierung durch Hypericin bei hoher Dosis/heller Haut möglich; Sonnenexposition/Solarium meiden","ci":["schwere Depression (nicht als Monotherapie)","gleichzeitige Einnahme interagierender Arzneistoffe (s. u.)","bekannte Photosensibilität"],"preg":"unzureichende Daten; arzneiliche Anwendung in Schwangerschaft/Stillzeit meiden","int":["CYP3A4-Induktion (via Hyperforin/PXR) → Ciclosporin, Tacrolimus, HIV-Proteasehemmer, viele Statine, Kalziumantagonisten u. v. m. [hoch — Wirkverlust der Komedikation, Transplantatabstoßung dokumentiert]","P-Glykoprotein-Induktion (ABCB1) → Digoxin u. a. [hoch]","Induktion CYP-vermittelt → orale Kontrazeptiva (Versagen/Zwischenblutungen), Warfarin/Phenprocoumon (INR-Abfall) [hoch]","additive Serotoninwirkung → SSRI, SNRI, Triptane, MAO-Hemmer [hoch — Serotoninsyndrom-Risiko]","hyperforinarme Extrakte (z. B. Ze 117) zeigen in Studien KEINE relevante CYP-/P-gp-Induktion [Interaktionsrisiko ist präparateabhängig, nicht pflanzenpauschal]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":true,"interaction_heavy":true,"cyp3a4_inducer":true,"pgp_inducer":true,"serotonergic":true,"photosensitizing":true,"toxin_ceiling":false},"warn":"Der klinisch wichtigste Interaktionspartner unter den Heilkräutern. Immer Medikationsanamnese. Risiko korreliert mit Hyperforin-Gehalt des Präparats."},"harv":{"t":"Blühende Triebspitzen zur Vollblüte (Juni-August)","m":[6,7,8],"o":"Kraut (Triebspitzen)","st":"trocken, dunkel; Wirkstoffe (Hypericin) lichtempfindlich"},"gard":{"site":"sonnig, trocken, durchlässig, mager","hard":"winterhart, mehrjährig","prop":"Aussaat (Lichtkeimer) oder Teilung; kann sich versamen","bs":"gut; wächst wild in der Region, im Garten anspruchslos"}},{"id":"sambucus-nigra","common":"Schwarzer Holunder","latin":"Sambucus nigra L.","family":"Adoxaceae (früher Caprifoliaceae)","part":["Blüte (Sambuci flos)","Frucht/Beere (Sambuci fructus)"],"feat":["Verholzter Strauch/kleiner Baum bis ~6 m","Gefiederte Blätter mit 5-7 Fiederblättchen","Cremeweiße Blüten in flachen, tellerförmigen Doldenrispen (Mai-Juli)","Schwarz-violette Beeren in überhängenden Dolden (ab Spätsommer)"],"season":"Blüte Mai-Juli; Fruchtreife August-September","habitat":"Siedlungsnähe, Wegränder, Waldsäume, Böschungen; häufig","conf":[{"n":"Roter Holunder / Traubenholunder","l":"Sambucus racemosa","t":"giftig","tox":"","note":"kegelförmige (nicht flache) Blütenstände, rote Beeren; Samen bleiben auch nach Erhitzen giftig"},{"n":"Attich / Zwerg-Holunder","l":"Sambucus ebulus","t":"giftig","tox":"","note":"krautig (nicht verholzt), aufrechte Beerenstände; deutlich giftiger als Schwarzer Holunder"}],"chem":{"g":["ätherisches Öl","Flavonoide (Rutin, Quercetin, Kämpferol)","Chlorogensäure","Gerbstoffe","Schleimstoffe"],"lead":"Blüte: Flavonoide/ätherisches Öl; Frucht: Anthocyane. Sicherheitsrelevant: Sambunigrin (roh)","sol":"Blütentee als Aufguss; Beeren als gekochter Saft/Sirup"},"ind":[{"c":"Frühsymptome banaler Erkältung (Blüte)","s":["Erkältung","Erkältungsbeginn","grippaler Infekt","Schwitzkur","Fieber","Schnupfen"],"tag":"TU","exp":"Traditionelle unterstützende Schwitzkur; kann Symptome begleitend lindern, keine kausale Heilung.","src":"HMPC traditional use, Sambuci flos (frühe Erkältungssymptome)"},{"c":"Infekte der oberen Atemwege (Frucht/Extrakt)","s":["Atemwegsinfekt","Erkältungsdauer","Grippe","Husten"],"tag":"PRÄ/TRAD","exp":"Möglicher milder symptomverkürzender Effekt, Evidenz uneinheitlich. Kein Ersatz für medizinische Abklärung bei schwerem Verlauf.","src":"Hawkins et al. 2019 (Metaanalyse); keine EU-Monographie für Frucht"}],"expect":{"ok":"Blütentee als traditionelle Schwitzkur bei Erkältungsbeginn; Beerensirup als vitaminreiche Winterküche mit möglicher milder Wirkung","no":"Holunder als antivirales 'Grippemittel' — Evidenz zu schwach für therapeutische Ansprüche"},"prep":{"f":["Blüte: heißer Aufguss (2-3 g/200 ml, abgedeckt 10-15 min)","Frucht: gekochter Saft/Sirup (nie roh)"],"why":"SICHERHEITSKRITISCH: rohe Beeren enthalten Sambunigrin → immer erhitzen (>80 °C, 15-20 min). Blüten sind ungiftig, Beeren roh unverträglich.","dose":"Blütentee 2-4x täglich sehr warm; Beerensirup als Nahrungsergänzung"},"safe":{"ceil":"Rohe/unreife Beeren, Blätter und Rinde enthalten Sambunigrin (Blausäurevorstufe) → Übelkeit, Erbrechen, Krämpfe; durch Erhitzen zerstört","ci":["Rohverzehr der Beeren","Überempfindlichkeit gegen Holunder(pollen)"],"preg":"Blütentee in üblichen Mengen und gekochte Beerenprodukte traditionell vertretbar; hochkonzentrierte Präparate meiden; keine rohen Beeren","int":["Blütentee/gekochte Beeren in üblichen Mengen [keine bekannten klinisch relevanten Interaktionen]","sehr gerbstoffreiche Zusätze können Arzneiabsorption mindern [gering, ggf. 1-2 h Abstand]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":false,"interaction_heavy":false,"toxin_ceiling":false,"raw_toxicity":true,"requires_heating":true},"warn":"Die Sicherheitsfrage ist eine ZUBEREITUNGSfrage: roh = unverträglich (Sambunigrin), erhitzt = sicher. Kein Rohverzehr, unreife Beeren aussortieren, giftige Schwesterarten (Roter Holunder, Attich) abgrenzen."},"harv":{"t":"Blüten Mai-Juli (trocken, voll geöffnet); Beeren August-September (vollreif violett-schwarz)","m":[5,6,7,8,9],"o":"Blüte und Frucht (getrennt)","st":"getrocknete Blüten dicht/dunkel; Beeren gekocht als Saft/Sirup haltbar"},"gard":{"site":"anspruchslos, nährstoffreich, sonnig bis halbschattig","hard":"voll winterhart, schnellwüchsig, langlebig","prop":"Steckhölzer sehr leicht; sät sich auch selbst aus","bs":"sehr gut; häufig wild, pflegeleicht, insekten- und vogelfreundlich"}},{"id":"symphytum-officinale","common":"Beinwell","latin":"Symphytum officinale L.","family":"Boraginaceae (Raublattgewächse)","part":["Wurzel (Symphyti radix)","seltener Kraut (Symphyti herba)"],"feat":["Kräftige, rau-borstig behaarte Pflanze","Am Stängel herablaufende, borstige Blätter","Glockenförmige, überhängende Blüten (purpur/rosa/cremefarben) in Wickeln","Dunkle, rübenförmige Pfahlwurzel (innen weißlich, schleimig)"],"season":"Blüte Mai bis Juli","habitat":"Feuchte Wiesen, Gräben, Bach- und Flussufer, Auen","conf":[{"n":"Fingerhut (im vegetativen Stadium)","l":"Digitalis purpurea","t":"giftig","tox":"Herzglykoside","note":"Rosette junger Blätter ähnlich; Fingerhut nicht raublatt-borstig wie Beinwell, andere Blattnervatur; Verwechslung v. a. bei Wildsammlung"}],"chem":{"g":["Allantoin (bis 1,5%)","Schleimstoffe (Fructane)","Gerbstoffe (4-6%)","Rosmarinsäure/Kaffeesäurederivate","Cholin","1,2-ungesättigte Pyrrolizidinalkaloide (PA)"],"lead":"Allantoin (Wundheilung/Zellproliferation), Rosmarinsäure (antiinflammatorisch); PA = Sicherheitsrelevanz","sol":"topische halbfeste Zubereitungen (Salbe/Creme/Gel); HMPC: Flüssigextrakt DEV 2:1, 65% Ethanol"},"ind":[{"c":"Prellungen, Zerrungen, Verstauchungen (topisch)","s":["Prellung","Zerrung","Verstauchung","stumpfe Verletzung","Sportverletzung","Bluterguss"],"tag":"TU/RCT","exp":"Gut belegte topische Lokaltherapie bei stumpfen Verletzungen — eine der besser belegten Anwendungen. NUR auf intakter Haut.","src":"HMPC traditional use, Symphyti radix (äußerl., max. 10 Tage); RCT PA-arme Präparate"},{"c":"Arthrose-/Gelenkschmerzen, Rückenschmerzen (topisch)","s":["Arthrose","Gelenkschmerzen","Rückenschmerzen","Kniearthrose","Muskelschmerzen"],"tag":"TU/RCT","exp":"Plausibler symptomatischer Nutzen topisch; keine Krankheitsmodifikation.","src":"RCT (Gonarthrose, akute Rückenschmerzen; teils vergleichbar Diclofenac)"}],"expect":{"ok":"Wirksame topische Anwendung bei stumpfen Verletzungen und Gelenk-/Rückenschmerzen (RCT-gestützt, PA-arme Präparate)","no":"Innerliche Anwendung ('Knochenheilung von innen', Tee) — KONTRAINDIZIERT wegen hepatotoxischer PA"},"prep":{"f":["geprüfte Fertigsalbe/-creme/-gel (PA-arm/-frei)","traditionell warmer Wurzelbrei/Umschlag (nur intakte Haut)"],"why":"lipophile/halbfeste topische Zubereitung; NIEMALS innerlich (Tee/Tinktur/Kapsel) wegen PA","dose":"10% halbfeste Zubereitung 2x täglich; Anwendung auf max. ~10 Tage begrenzen (HMPC), Eigensammlung nicht länger als 4-6 Wochen/Jahr"},"safe":{"ceil":"1,2-ungesättigte Pyrrolizidinalkaloide sind hepatotoxisch und potenziell kanzerogen (Tierversuch). HMPC-Grenzwerte für PA-Gehalt; nur äußerlich auf intakter Haut, begrenzte Dauer","ci":["innerliche Anwendung (absolut)","offene Wunden","Schleimhäute/Augen","Schwangerschaft","Stillzeit","Kinder unter 3 Jahren"],"preg":"kontraindiziert (PA, unzureichende Daten)","int":["topische Anwendung [keine bekannten klinisch relevanten Interaktionen bei bestimmungsgemäßem Gebrauch]","PA plus andere lebertoxische Stoffe bei Fehlanwendung [theoretisch, nur bei unzulässiger systemischer Exposition]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":true,"interaction_heavy":false,"toxin_ceiling":true,"toxin_type":"Pyrrolizidinalkaloide","topical_only":true,"hepatotoxic":true},"warn":"Der 'nur topisch'-Fall: äußerlich (intakte Haut, begrenzte Dauer, PA-arme Präparate) wirksam und akzeptabel — innerlich absolut kontraindiziert (Lebertoxizität/Kanzerogenität der PA). Ankerpunkt fürs PA-Toxin-Register."},"harv":{"t":"Wurzel März-Mai oder Herbst","m":[3,4,5,10,11],"o":"Wurzel","st":"Fertigpräparate laut Packungsangabe"},"gard":{"site":"feucht, nährstoffreich, sonnig bis halbschattig","hard":"voll winterhart, kräftig wüchsig, ausbreitungsfreudig","prop":"Wurzelteilung sehr leicht (jedes Wurzelstück treibt aus)","bs":"gut; robuste Bienenweide, aber ausbreitungsstark — arzneilich nur als Anschauung, nicht zur Selbstverarbeitung"}},{"id":"mentha-piperita","common":"Pfefferminze","latin":"Mentha × piperita L.","family":"Lamiaceae","part":["Blatt (Menthae piperitae folium)","ätherisches Öl (Menthae piperitae aetheroleum)"],"feat":["Vierkantiger Stängel (typisch Lamiaceae)","Gegenständige, gesägte, dunkelgrüne Blätter, oft rötlich überlaufen","Intensiv mentholig-kühlender Geruch beim Zerreiben","Blüten in end-/achselständigen Scheinähren"],"season":"Blüte Juli bis September","habitat":"Kulturpflanze (steriler Hybrid); feuchte, nährstoffreiche Böden im Garten","conf":[{"n":"Grüne Minze / Spearmint","l":"Mentha spicata","t":"essbar","tox":"","note":"aromatisch anders (carvon-betont, ohne kühle Menthol-Schärfe); keine toxische Verwechslung"},{"n":"Wasserminze / Ackerminze","l":"Mentha aquatica / arvensis","t":"essbar","tox":"","note":"heimische Wildminzen, wirkstoffärmer/anders; keine toxische Verwechslung"}],"chem":{"g":["ätherisches Öl (Menthol, Menthon, Menthylacetat, 1,8-Cineol)","Flavonoide","Gerbstoffe (Rosmarinsäure)"],"lead":"Menthol (Kalziumkanal-Antagonist → Spasmolyse glatter Muskulatur)","sol":"ätherisches Öl lipophil/flüchtig → magensaftresistente Kapsel für Wirkung am Darm; Gerbstoffe/Flavonoide wasserlöslich → Tee"},"ind":[{"c":"Reizdarmsyndrom / krampfartige Magen-Darm-Beschwerden (Öl)","s":["Reizdarm","RDS","Reizdarmsyndrom","Magenkrämpfe","Bauchschmerzen","Blähungen","Darmkrämpfe","Colon irritabile"],"tag":"WEU","exp":"Gut belegte, wirksame symptomatische Therapie bei RDS — der stärkste WEU-Fall im Kern-Katalog. Als Arzneimittel (Kapsel), nicht als Tee.","src":"HMPC well-established use (Öl, RDS/Magen-Darm-Krämpfe); S3-Leitlinie RDS"},{"c":"Spannungskopfschmerz (topisch, Öl auf Stirn/Schläfen)","s":["Spannungskopfschmerz","Kopfschmerzen","Kopfweh"],"tag":"WEU","exp":"Belegte Lokalanwendung bei Spannungskopfschmerz.","src":"HMPC well-established use (Öl topisch, Spannungskopfschmerz)"},{"c":"Dyspeptische Beschwerden / Flatulenz (Blatt/Tee)","s":["Verdauungsbeschwerden","Völlegefühl","Flatulenz","Magenbeschwerden","Übelkeit"],"tag":"TU/ESCOP+","exp":"Milde symptomatische Wirkung des Tees; schwächer belegt als das Öl bei RDS.","src":"HMPC traditional use (Blatt); ESCOP+ (Verdauungsbeschwerden)"},{"c":"Husten/Erkältung, lokale Muskelschmerzen, Juckreiz (topisch, Öl)","s":["Erkältung","Husten","Muskelschmerzen","Juckreiz"],"tag":"TU","exp":"Traditionelle Anwendung; kühlender/schleimhautaktiver Effekt.","src":"HMPC traditional use (Öl äußerlich/Inhalation)"}],"expect":{"ok":"Pfefferminzöl (magensaftresistent) bei RDS wirksam belegt (WEU); topisch bei Spannungskopfschmerz belegt","no":"Pfefferminz-Tee als gleichwertiger RDS-Behandler — der Tee erreicht nicht die belegte Wirkung des standardisierten Öls am Wirkort Darm"},"prep":{"f":["RDS: magensaftresistente Öl-Kapsel (Freisetzung im Darm)","Spannungskopfschmerz: Öl flüssig auf Stirn/Schläfen","Verdauung: Blatt-Tee (Aufguss abgedeckt)"],"why":"SCHLÜSSELPRINZIP: nur die magensaftresistente Öl-Formulierung bringt das lipophile Öl intakt an den Wirkort Darm — Tee kann das nicht leisten. Öl-vs-Tee ist hier klinisch, nicht nur geschmacklich.","dose":"Öl: 0,6–1,2 ml/Tag auf 2–3 Einzeldosen (Erwachsene/Jugendliche ≥ 12 J.); Tee: 1–2 TL/Tasse mehrmals täglich"},"safe":{"ceil":"kein klassisches Toxin; Öl nicht bei Säuglingen/Kleinkindern im Gesicht/Nasenbereich (Laryngospasmus-Gefahr durch Menthol)","ci":["Gallensteinleiden nur nach Rücksprache","Verschluss der Gallenwege","Öl nicht ins Gesicht von Säuglingen/Kleinkindern"],"preg":"Tee in üblichen Mengen meist unproblematisch; Öl-Arzneimittel nur nach Rücksprache","int":["Menthol/Pfefferminzöl als schwacher CYP3A4-/CYP1A2-Modulator in vitro diskutiert [in üblichen Dosen gering]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":false,"interaction_heavy":false,"toxin_ceiling":false,"reflux_caution":true,"infant_facial_caution":true},"warn":"Reflux-Verstärkung durch Sphinkter-Relaxation möglich; Öl nie ins Gesicht kleiner Kinder. Ansonsten sehr sicheres, gut belegtes Phytopharmakon."},"harv":{"t":"Blätter kurz vor/zur Blüte (höchster Ölgehalt), trockener Vormittag","m":[6,7,8],"o":"Blatt","st":"getrocknet ganz, dicht/lichtgeschützt; erst vor Gebrauch zerkleinern"},"gard":{"site":"feucht, nährstoffreich, halbschattig bis sonnig","hard":"winterhart, wüchsig, stark ausläuferbildend (am besten im Topf/Kübel eindämmen)","prop":"nur vegetativ (Ausläufer/Teilung) — steriler Hybrid, Aussaat sinnlos","bs":"sehr gut; dankbare Kübelpflanze, ausbreitungsstark — Wurzelsperre empfehlenswert"}},{"id":"thymus-vulgaris","common":"Thymian","latin":"Thymus vulgaris L.","family":"Lamiaceae","part":["Kraut (Thymi herba)","ätherisches Öl (Thymi aetheroleum)"],"feat":["Niedriger, aromatischer, verholzender Zwergstrauch","Kleine, schmale, eingerollte graugrüne Blätter","Vierkantige Stängel (Lamiaceae)","Würzig-aromatischer Geruch beim Zerreiben (Thymol); hell-lila Lippenblüten"],"season":"Blüte Mai bis Juli","habitat":"Sonnig, trocken, durchlässig, kalkhaltig; mediterrane Herkunft","conf":[{"n":"Quendel / Feld-Thymian","l":"Thymus pulegioides / serpyllum","t":"essbar","tox":"","note":"heimischer wilder Verwandter, ähnliche Verwendung, aromaärmer; keine toxische Verwechslung"}],"chem":{"g":["ätherisches Öl (Thymol, Carvacrol) — Ph. Eur. min. 12 ml/kg, Thymol+Carvacrol ≥ 40% des Öls","Lamiaceen-Gerbstoffe (Rosmarinsäure)","Flavonoide"],"lead":"Thymol, Carvacrol (antimikrobiell, spasmolytisch, expektorierend)","sol":"ätherisches Öl lipophil/flüchtig → Tinktur/Inhalation; Gerbstoffe/Flavonoide wasserlöslich → Tee"},"ind":[{"c":"Produktiver Husten bei Erkältung (Thymian allein)","s":["Husten","produktiver Husten","verschleimter Husten","Bronchitis","Katarrh","Erkältungshusten"],"tag":"TU/ESCOP+","exp":"Sinnvolle traditionelle Anwendung bei verschleimtem Erkältungshusten; als Monopräparat schwächer belegt als sein Ruf vermuten lässt.","src":"HMPC traditional use, Thymi herba allein; ESCOP+; Kommission E"},{"c":"Akute Bronchitis (Kombination Thymian + Primel/Efeu)","s":["Bronchitis","akute Bronchitis","Bronchipret"],"tag":"WEU","exp":"In den geprüften Fixkombinationen klinisch belegt — wichtig: die starke Evidenz gehört der Kombination, nicht dem Thymian solo.","src":"HMPC well-established use NUR für Fixkombination Thymian+Primel/Efeu (RCT)"},{"c":"Entzündungen Mund-/Rachenschleimhaut (topisch)","s":["Halsschmerzen","Mundschleimhautentzündung","Gurgeln","Mundgeruch","Rachenentzündung"],"tag":"TU/ESCOP+","exp":"Risikoarme Lokalanwendung als Gurgellösung.","src":"ESCOP+; Kommission E (Mundspülung)"}],"expect":{"ok":"Traditionell bei verschleimtem Husten; in Fixkombination mit Primel/Efeu klinisch belegt (WEU)","no":"Thymian-Tee allein als evidenzbasierter Bronchitis-Behandler — der WEU-Beleg gehört der KOMBINATION, nicht dem Monopräparat"},"prep":{"f":["Tee/Infus (1–2 TL ≈ 3 g/Tasse, mehrmals täglich; Tagesdosis bis ~12 g)","Tinktur","Gurgellösung (~5% Aufguss)","Inhalation (Öl)"],"why":"wasserlösliche + ätherische Anteile → Tee für Alltag, Tinktur/Inhalation für öl-betonte Wirkung","dose":"Tee 1–2 TL/Tasse; Tagesdosis bis ca. 12 g Droge"},"safe":{"ceil":"kein klassisches Toxin; Thymianöl konzentriert reizend — nicht unverdünnt anwenden","ci":["Überempfindlichkeit gegen Lamiaceae","flüssige Thymianzubereitungen nicht bei Kindern < 4 J.; Thymianöl nicht bei < 18 J."],"preg":"Tee in üblichen Mengen meist unproblematisch; konzentrierte Öl-Präparate meiden","int":["Teedroge in üblichen Mengen [keine klinisch relevanten Interaktionen bekannt]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":false,"interaction_heavy":false,"toxin_ceiling":false,"oil_age_restriction":true},"warn":"Lehrbeispiel Evidenz vs. Ruf: Thymian solo = traditional use; der WEU-Beleg gilt nur für Fixkombinationen (Thymian+Primel/Efeu). Öl bei Kindern eingeschränkt."},"harv":{"t":"kurz vor/zur Blüte (höchster Ölgehalt), trockener Vormittag","m":[5,6,7],"o":"Kraut (blühende Triebspitzen)","st":"getrocknet ganz, dicht/lichtgeschützt; erst vor Gebrauch zerkleinern"},"gard":{"site":"vollsonnig, durchlässig, mager, kalkverträglich; Staunässe meiden","hard":"winterhart (jüngere Pflanzen ggf. Winterschutz), verholzt","prop":"Aussaat, Stecklinge oder Teilung; regelmäßiger Rückschnitt gegen Verholzen","bs":"sehr gut; pflegeleichte, insektenfreundliche Kübel-/Beetpflanze"}},{"id":"matricaria-chamomilla","common":"Kamille","latin":"Matricaria chamomilla L. (syn. M. recutita)","family":"Asteraceae (Korbblütler)","part":["Blüte (Matricariae flos)","ätherisches Öl (Matricariae aetheroleum)"],"feat":["Weiße Zungenblüten (bald zurückgeschlagen/hängend) um gelbe Röhrenblüten","Hohler, spitz-kegelförmiger Blütenboden OHNE Spreublätter (Schlüsselmerkmal!)","Fein gefiederte Blätter; aromatischer Kamillengeruch beim Zerreiben","8–120 Blütenköpfchen pro Pflanze, Köpfchen 18–25 mm breit"],"season":"Blüte Mai bis September (Ernte Ende April/Anfang Blüte)","habitat":"Äcker, Wegränder, Ruderalflächen, Brachen; nährstoffreiche Böden","conf":[{"n":"Geruchlose Kamille","l":"Tripleurospermum inodorum","t":"essbar/unwirksam","tox":"","note":"Blütenboden gefüllt (nicht hohl), fast geruchlos; kein arzneilicher Wert, aber ungiftig"},{"n":"Römische Kamille / Hundskamille","l":"Anthemis spp. / Chamaemelum nobile","t":"essbar/reizend","tox":"","note":"Blütenboden mit Spreublättern, stärkeres Sensibilisierungspotenzial (Kommission-E-Negativmonographie für Römische Kamille); andere Verwendung"}],"chem":{"g":["ätherisches Öl (0,3–1,5%): (-)-α-Bisabolol, Bisabololoxide, Chamazulen (entsteht bei Destillation aus Matricin)","Flavonoide (Apigenin-7-glucosid, Quercetin, Luteolin)","Cumarine (Umbelliferon, Herniarin)","Schleimstoffe"],"lead":"α-Bisabolol, Chamazulen, Apigenin (antiphlogistisch, spasmolytisch)","sol":"gemischt: ätherisches Öl lipophil, Flavonoide/Schleimstoffe wasserlöslich → Tee für innerlich/Gurgeln, Extrakte/Öl für topisch"},"ind":[{"c":"Leichte krampfartige Magen-Darm-Beschwerden / Flatulenz (innerlich)","s":["Magenbeschwerden","Magenkrämpfe","Blähungen","Flatulenz","Verdauungsbeschwerden","Bauchschmerzen","Magen-Darm"],"tag":"TU/ESCOP+","exp":"Plausibel wirksame, risikoarme symptomatische Anwendung; Evidenz traditionell, nicht WEU.","src":"HMPC traditional use; ESCOP+ (leichte GI-Krämpfe/Flatulenz)"},{"c":"Entzündungen Mund-/Rachenschleimhaut & Haut (topisch)","s":["Halsschmerzen","Mundschleimhautentzündung","Zahnfleischentzündung","Gingivitis","Hautentzündung","Hautreizung","Gurgeln","Wunde"],"tag":"TU/ESCOP+","exp":"Sinnvolle Lokaltherapie (Spülung, Bad, Salbe, Inhalation) bei leichten Entzündungen.","src":"HMPC/ESCOP+ (Haut-/Schleimhautentzündungen, äußerlich)"},{"c":"Erkältungssymptome (Inhalation)","s":["Erkältung","Schnupfen","Atemwege","Inhalation"],"tag":"TU","exp":"Traditionelle unterstützende Anwendung.","src":"HMPC traditional use (Dampfinhalation)"}],"expect":{"ok":"Vielseitige, risikoarme Lokal- und GI-Anwendung mit guter pharmakologischer Plausibilität","no":"'Allheilmittel'-Ruf — die Evidenz ist trotz Plausibilität traditional use, nicht WEU"},"prep":{"f":["Tee/Infus (innerlich, Gurgeln)","Dampfinhalation","topisch als Extrakt/Salbe/Bad","Spülung (Mund, Anal-/Genitalbereich)"],"why":"wasserlösliche + ätherische Anteile → Tee/Aufguss deckt die meisten Anwendungen; Öl/Extrakt für topische Konzentration","dose":"Tee: 3 g Blüten/Tasse (≈ 1 EL), mehrmals täglich; Aufguss abgedeckt ziehen"},"safe":{"ceil":"kein klassisches Toxin","ci":["Korbblütler-Allergie (Asteraceae) — CAVE Kreuzreaktion","nicht ins Auge (Bindehautreizung)"],"preg":"in üblichen Mengen als unproblematisch angesehen","int":["Cumaringehalt gering; theoretisch additiv mit Antikoagulanzien bei sehr hohem Konsum [in üblichen Dosen irrelevant]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":false,"interaction_heavy":false,"toxin_ceiling":false,"asteraceae_allergy":true},"warn":"Wichtigster Punkt ist die Korbblütler-(Asteraceae-)Kreuzallergie — relevant auch für Schafgarbe und Ringelblume (gemeinsames Register)."},"harv":{"t":"kurz nach Blühbeginn (Ende April/Mai), Köpfchen voll geöffnet, trockener Vormittag","m":[5,6,7],"o":"Blüte (Köpfchen)","st":"getrocknet dicht/lichtgeschützt; Wirkstoffverlust über die Zeit"},"gard":{"site":"sonnig, durchlässig, nährstoffreich; anspruchslos","hard":"einjährig, sät sich selbst aus","prop":"Aussaat (Lichtkeimer) im Frühjahr; versamt sich zuverlässig","bs":"sehr gut; einfache einjährige Aussaat, wächst auch wild in der Region"}},{"id":"urtica-dioica","common":"Brennnessel","latin":"Urtica dioica L.","family":"Urticaceae","part":["Blatt/Kraut (Urticae folium/herba)","Wurzel (Urticae radix)"],"feat":["Brennhaare auf Blättern und Stängeln (brechen bei Berührung ab, injizieren Zellsaft → Quaddeln)","Gegenständige, grob gesägte, herz-/lanzettförmige Blätter","Vierkantiger Stängel; zweihäusig (getrennte männliche/weibliche Pflanzen)","Kleine grünliche Blütenrispen in den Blattachseln"],"season":"Blüte Juni bis Oktober; Blätter über die ganze Vegetationsperiode","habitat":"Nährstoffreiche (stickstoffreiche) Böden: Wegränder, Gärten, Ufer, Ruderalflächen; sehr häufig","conf":[{"n":"Taubnessel","l":"Lamium spp.","t":"essbar","tox":"","note":"ähnliche Blattform, aber KEINE Brennhaare, Lippenblüten (Lamiaceae); ungefährlich, essbar"}],"chem":{"g":["Flavonoide","Kaffeesäureester (Kaffeoyläpfelsäure, Chlorogensäure)","Mineralsalze/Kieselsäure","Carotinoide"],"lead":"Blatt: Flavonoide/Kaffeesäureester (aquaretisch); Wurzel: Phytosterole/Lektine (BPH). Brennhaar-Zellsaft: Histamin, Acetylcholin, Ameisensäure","sol":"wasserlöslich → Tee/Frischpflanzensaft; Wurzelextrakt als Fertigpräparat"},"ind":[{"c":"Durchspülung ableitende Harnwege / Harnwegsbeschwerden (Blatt)","s":["Harnwegsinfekt","Blasenentzündung","Durchspülung","Nierengrieß","Harnwege","Wassertreiben"],"tag":"TU/ESCOP+","exp":"Unterstützende Durchspülungstherapie (ausreichend trinken!). Kein Ersatz für Antibiotika bei bakteriellem Infekt.","src":"HMPC traditional use; ESCOP+; Kommission E (Durchspülung Harnwege)"},{"c":"Rheumatische / Gelenkbeschwerden (Blatt)","s":["Rheuma","Gelenkschmerzen","Arthrose","Arthritis","Gliederschmerzen"],"tag":"TU/ESCOP+","exp":"Unterstützend/adjuvant (ggf. NSAR-Dosis-reduzierend); keine krankheitsmodifizierende Wirkung.","src":"ESCOP+ (Arthrose/Rheuma, unterstützend); Anwendungsbeobachtungen"},{"c":"Miktionsbeschwerden bei benigner Prostatahyperplasie (Wurzel)","s":["Prostata","BPH","Prostatavergrößerung","Miktionsbeschwerden","Wasserlassen"],"tag":"TU","exp":"Symptomatische Linderung bei leichter BPH; ändert nicht die Prostatagröße/Krankheitsverlauf. Urologische Abklärung vorausgesetzt.","src":"HMPC traditional use, Urticae radix (BPH-Miktionsbeschwerden)"}],"expect":{"ok":"Wertvolles nährstoffreiches Wildgemüse; unterstützende Aquarese und milde adjuvante Rheuma-/BPH-Anwendung","no":"'Blutreinigung/Entschlackung', Heilung von Arthrose oder BPH — nicht belegt; Evidenz durchweg traditional use"},"prep":{"f":["Blatt-Tee (2 TL ≈ 1,5 g/Tasse, Tagesdosis 8-12 g)","Frischpflanzensaft","Wurzelextrakt (Fertigpräparat, BPH)","Wildgemüse/Küche"],"why":"wasserlösliche Wirkstoffe → Tee/Saft; für BPH standardisierter Wurzelextrakt; ausreichende Flüssigkeitszufuhr bei Durchspülungstherapie essenziell","dose":"Tee 8-12 g Droge/Tag; Wurzelpräparate je Packungsangabe"},"safe":{"ceil":"kein Toxin; sehr sichere Pflanze","ci":["Ödeme infolge eingeschränkter Herz-/Nierenfunktion (KEINE Durchspülungstherapie!)","Allergie gegen Bestandteile"],"preg":"arzneiliche Anwendung mangels Daten zurückhaltend; als Gemüse in Maßen ok","int":["aquaretisch — theoretisch additiv mit Diuretika; Kaliumhaushalt beachten bei sehr hohem Konsum [gering]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":false,"interaction_heavy":false,"toxin_ceiling":false,"cardiorenal_flush_caution":true},"warn":"Wichtigste echte KI: KEINE Durchspülungstherapie bei Ödemen durch Herz-/Niereninsuffizienz. Ansonsten der 'Erwartung-dämpfen'-Fall — gesundes Gemüse mit milder, überwiegend traditioneller Heilwirkung."},"harv":{"t":"Blätter Frühjahr bis Herbst (junge Triebe zart); Wurzel Herbst/Frühjahr","m":[4,5,6,7,8,9],"o":"Blatt/Kraut (Wurzel separat)","st":"getrocknet dicht/lichtgeschützt"},"gard":{"site":"nährstoff-/stickstoffreich, feucht, sonnig bis halbschattig","hard":"voll winterhart, mehrjährig, stark ausbreitend (Rhizome)","prop":"Selbstaussaat/Rhizome; im Garten eher eindämmen; wichtige Raupenfutterpflanze (Schmetterlinge)","bs":"sehr gut/ohnehin vorhanden; ökologisch wertvoll, ggf. eine Ecke bewusst stehen lassen"}},{"id":"calendula-officinalis","common":"Ringelblume","latin":"Calendula officinalis L.","family":"Asteraceae (Korbblütler)","part":["Blüte (Calendulae flos)"],"feat":["Leuchtend gelb-orange Blütenköpfchen (5-7 cm), Zungen- + Röhrenblüten","30-50 cm hoch, oberer Teil verzweigt, weich behaarte Stängel","Wechselständige, längliche, weich behaarte Blätter","Ringförmig gekrümmte Früchte (Namensgeber); aromatischer Geruch"],"season":"Blüte Juni bis September (kontinuierlich)","habitat":"Gartenpflanze; sonnig, durchlässige, mäßig nährstoffreiche Böden","conf":[{"n":"Acker-Ringelblume","l":"Calendula arvensis","t":"essbar/unwirksam","tox":"","note":"kleinere Blüten, arzneilich weniger genutzt; keine toxische Verwechslung"}],"chem":{"g":["Triterpensaponine (Calenduloside)","Triterpenalkohole","Flavonoide","Carotinoide (Beta-Carotin, Lycopin)","ätherisches Öl","Cumarine","Polysaccharide","Bitterstoff Calendulin"],"lead":"Triterpene/Triterpenalkohole (Faradiol-Ester) und Flavonoide (antiinflammatorisch, granulationsfördernd)","sol":"wirksame Triterpene LIPOPHIL → Ölauszug/Salbe ist die logische Zubereitung; wasserlösliche Anteile → Aufguss für Umschläge/Spülung"},"ind":[{"c":"Kleine Wunden / schlecht heilende Wunden (topisch)","s":["Wunde","Wundheilung","kleine Wunden","Schürfwunde","Ulcus cruris","Hautverletzung"],"tag":"TU/ESCOP+","exp":"Sinnvolle unterstützende Wundpflege bei kleinen/oberflächlichen Wunden; keine Anwendung bei tiefen/infizierten Wunden ohne ärztliche Beurteilung.","src":"HMPC traditional use; ESCOP+; Kommission E (kleine Wunden, äußerlich)"},{"c":"Leichte Hautentzündungen (topisch)","s":["Hautentzündung","Hautreizung","Sonnenbrand","Ekzem","wunde Haut","Dermatitis"],"tag":"TU/ESCOP+","exp":"Lindernde Lokaltherapie bei leichter Hautreizung.","src":"HMPC/ESCOP+ (leichte Hautentzündungen)"},{"c":"Leichte Entzündungen Mund-/Rachenschleimhaut (Spülung)","s":["Halsschmerzen","Mundschleimhautentzündung","Zahnfleischentzündung","Gingivitis","Gurgeln","Rachenentzündung"],"tag":"TU","exp":"Risikoarme Spülung bei leichten Schleimhautentzündungen.","src":"HMPC traditional use; Kommission E (Mund-/Rachenschleimhaut)"}],"expect":{"ok":"Bewährte, risikoarme topische Wund- und Hautpflege mit plausibler entzündungshemmender/granulationsfördernder Wirkung","no":"innerliche Heilwirkungen — arzneilich anerkannt ist ausschließlich die äußerliche Anwendung; RingelblumenKRAUT (Calendulae herba) von Kommission E negativ bewertet"},"prep":{"f":["Salbe/Creme (Ölauszug der Blüten)","Ölmazerat (Hautpflegeöl)","Aufguss für Umschläge","Spülung/Gurgellösung"],"why":"SCHLÜSSELPRINZIP: die wirksamen Triterpene sind lipophil → Ölauszug/Salbe ist chemisch die richtige Form, NICHT ein wässriger Tee zum Trinken. Klassisches Beispiel: warum Ringelblumensalbe ein Ölauszug ist.","dose":"Salbe/Öl mehrmals täglich dünn auftragen; Aufguss (1-2 TL/150 ml, 7 min) für Umschläge"},"safe":{"ceil":"kein Toxin","ci":["Korbblütler-Allergie (Asteraceae) — CAVE Kreuzreaktion","Schwangerschaft/Stillzeit (mangels Daten, arzneilich)","Kinder < 6 Jahren (Datenlage)"],"preg":"arzneilich mangels Unbedenklichkeitsdaten zurückhaltend","int":["topische Anwendung [keine bekannten klinisch relevanten Interaktionen]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":true,"interaction_heavy":false,"toxin_ceiling":false,"asteraceae_allergy":true,"topical_only":true},"warn":"Nur äußerlich anerkannt; Korbblütler-Kreuzallergie beachten (gemeinsames Register mit Kamille/Schafgarbe). Nicht auf tiefe/infizierte Wunden ohne ärztliche Beurteilung."},"harv":{"t":"voll geöffnete Blütenköpfchen Juni-September, trockener Vormittag","m":[6,7,8,9],"o":"Blüte","st":"getrocknet dicht/lichtgeschützt; Ölauszug kühl/dunkel"},"gard":{"site":"sonnig, durchlässig, mäßig nährstoffreich, etwas sandig","hard":"einjährig, sät sich zuverlässig selbst aus","prop":"Aussaat im Frühjahr; blüht lange, dankbar","bs":"sehr gut; einfache einjährige Aussaat, insektenfreundlich, ideale Einsteiger-Heilpflanze für Salben"}},{"id":"achillea-millefolium","common":"Schafgarbe","latin":"Achillea millefolium L.","family":"Asteraceae (Korbblütler)","part":["Kraut (Millefolii herba)","Blüte (Millefolii flos)"],"feat":["Fein 2-3fach gefiederte, 'tausendblättrige' Blätter (daher 'millefolium')","Weiße (selten rosa) Blütenköpfchen in flachen Schirmrispen (Doldentrugdolde)","Aromatischer, würziger Geruch beim Zerreiben; behaarter, kantiger Stängel","Ausdauernd, mit kurzen Ausläufern"],"season":"Blüte Juni bis Oktober","habitat":"Wiesen, Weiden, Wegränder, Böschungen; sonnig, anspruchslos; sehr häufig","conf":[{"n":"Junge Doldenblütler-Rosetten (z. B. Schierling, Wilde Möhre)","l":"Apiaceae spp.","t":"teils lebensgefährlich (Schierling)","tox":"","note":"im jungen Blattstadium können fein gefiederte Rosetten oberflächlich ähneln; Schafgarbe riecht aromatisch-würzig, Schierling unangenehm 'mäuseartig'. Bei Wildsammlung vor Blüte erhöhte Vorsicht — Blüte abwarten (Schafgarbe: flache weiße Schirme; Apiaceae: echte Dolden)"}],"chem":{"g":["ätherisches Öl (Chamazulen-Bildner, Sesquiterpenlactone)","Flavonoide","Gerbstoffe","Bitterstoffe (Achillein)","Kaffeesäurederivate"],"lead":"Sesquiterpenlactone + Flavonoide (spasmolytisch, antiinflammatorisch), Bitterstoffe (appetitanregend/verdauungsfördernd)","sol":"wasserlösliche Anteile → Tee (innerlich/Sitzbad); auch Aufguss für Umschläge"},"ind":[{"c":"Appetitlosigkeit & dyspeptische Beschwerden (innerlich)","s":["Appetitlosigkeit","Verdauungsbeschwerden","Völlegefühl","Blähungen","Flatulenz","Magenkrämpfe","Magenbeschwerden"],"tag":"TU/ESCOP+","exp":"Plausible symptomatische Wirkung bei leichten Verdauungsbeschwerden; Evidenz traditionell.","src":"HMPC traditional use; ESCOP+; Kommission E (Appetitlosigkeit/Dyspepsie)"},{"c":"Leichte menstruationsbedingte Krämpfe / Pelvipathie (innerlich/Sitzbad)","s":["Menstruationskrämpfe","Regelschmerzen","Unterleibskrämpfe","Pelvipathia vegetativa","Sitzbad"],"tag":"TU/ESCOP+","exp":"Traditionelle unterstützende Anwendung bei leichten Krämpfen; kein Ersatz bei starken/organischen Beschwerden.","src":"HMPC traditional use; ESCOP+ (Menstruationskrämpfe; Sitzbäder Pelvipathie)"},{"c":"Kleine oberflächliche Wunden (topisch)","s":["Wunde","kleine Wunden","Hautentzündung","Schürfwunde","Wundkraut"],"tag":"TU/ESCOP+","exp":"Traditionelle Wundpflege bei kleinen oberflächlichen Wunden.","src":"HMPC/ESCOP+ traditional use (kleine Wunden, äußerlich)"}],"expect":{"ok":"Vielseitiges mildes Bitter-/Spasmolyse-Kraut für Verdauung und leichte Krämpfe; traditionelles Wundkraut","no":"starke oder krankheitsmodifizierende Wirkungen — durchweg traditional use"},"prep":{"f":["Tee/Infus (innerlich)","Sitzbad","Aufguss für Umschläge (topisch)"],"why":"wasserlösliche Wirkstoffe → Tee/Aufguss deckt innerliche und äußerliche Anwendung","dose":"Tee ca. 4,5 g Droge/Tag (bzw. je Zubereitung); Aufguss für Umschläge/Sitzbäder"},"safe":{"ceil":"kein klassisches Toxin","ci":["Korbblütler-Allergie (Asteraceae) — CAVE Kreuzreaktion","bekannte 'Schafgarben-Dermatitis' (Photo-/Kontaktdermatitis durch Sesquiterpenlactone)"],"preg":"arzneilich zurückhaltend (traditionell uteruswirksam diskutiert); Küchenmengen unkritisch","int":["keine klinisch relevanten bekannt [gering]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":false,"interaction_heavy":false,"toxin_ceiling":false,"asteraceae_allergy":true,"apiaceae_confusion_young":true},"warn":"Zwei Punkte: Korbblütler-Kreuzallergie (Register mit Kamille/Ringelblume) und Vorsicht bei Wildsammlung junger Rosetten (oberflächliche Ähnlichkeit mit giftigen Doldenblütlern) — im Zweifel Blüte abwarten."},"harv":{"t":"blühendes Kraut Juni-Oktober, trockener Vormittag","m":[6,7,8,9],"o":"Kraut (blühend) / Blüte","st":"getrocknet dicht/lichtgeschützt"},"gard":{"site":"sonnig, durchlässig, nährstoffreich; anspruchslos, trockenheitsverträglich","hard":"voll winterhart, mehrjährig, über Ausläufer ausbreitend","prop":"Teilung (Frühjahr/Herbst) oder Aussaat; robust","bs":"sehr gut/wild vorhanden; wertvolle Insektenweide; Zuchtformen (bunt) nicht für Tee verwenden"}},{"id":"melissa-officinalis","common":"Melisse","latin":"Melissa officinalis L.","family":"Lamiaceae","part":["Blatt (Melissae folium)"],"feat":["Gegenständige, herzförmig-eiförmige, gekerbte, runzelige Blätter","Vierkantiger Stängel (Lamiaceae)","Deutlicher ZITRONEN-Geruch beim Zerreiben (Citral/Citronellal) — Schlüsselmerkmal","Kleine weißliche Lippenblüten in Blattachseln"],"season":"Blüte Juni bis August","habitat":"Gartenpflanze; nährstoffreiche, humose Böden, sonnig bis halbschattig","conf":[{"n":"Katzenminze / andere Lamiaceen","l":"Nepeta / Lamiaceae spp.","t":"essbar","tox":"","note":"ähnliche Blattform, aber ohne den charakteristischen Zitronenduft; keine toxische Verwechslung"}],"chem":{"g":["ätherisches Öl (Citral = Geranial+Neral, Citronellal)","Lamiaceen-Gerbstoffe (Rosmarinsäure)","Flavonoide"],"lead":"Rosmarinsäure (beruhigend, u. a. als GABA-Transaminase-Hemmer diskutiert), ätherisches Öl (Aroma, antiviral topisch)","sol":"wasserlösliche Rosmarinsäure/Flavonoide → Tee; ätherisches Öl flüchtig; topische Extrakte für Herpes"},"ind":[{"c":"Leichte Stresssymptome / Unruhe / Einschlafhilfe (innerlich)","s":["Unruhe","nervöse Unruhe","Stress","Anspannung","Reizbarkeit","Einschlafstörungen","Schlafstörungen","Nervosität"],"tag":"TU/ESCOP+","exp":"Milde beruhigende Wirkung, oft in Kombination (Baldrian/Hopfen). Beliebt, aber Evidenz schwach — Erwartung realistisch halten.","src":"HMPC traditional use; ESCOP+ (Stress/Unruhe/Schlaf)"},{"c":"Leichte krampfartige Magen-Darm-Beschwerden / Flatulenz (innerlich)","s":["Blähungen","Flatulenz","Bauchkrämpfe","Verdauungsbeschwerden","Magenbeschwerden"],"tag":"TU/ESCOP+","exp":"Milde symptomatische Wirkung des Tees.","src":"HMPC traditional use; ESCOP+ (leichte GI-Krämpfe/Flatulenz)"},{"c":"Lippenherpes (topisch)","s":["Herpes","Lippenherpes","Fieberbläschen","Herpes labialis","HSV"],"tag":"ESCOP+/RCT","exp":"Topisch bei Lippenherpes klinisch unterstützt — hier ist die Evidenz stärker als bei der beruhigenden Innenanwendung. Bei häufigen/schweren Rezidiven Aciclovir überlegen.","src":"ESCOP+/klinische Daten (topisch Lippenherpes HSV-1/2)"}],"expect":{"ok":"Angenehmes Beruhigungs-/Verdauungskraut (mild, traditionell); topisch bei Lippenherpes klinisch unterstützt","no":"starkes Sedativum/Schlafmittel oder Anxiolytikum — die innerliche Evidenz ist trotz Beliebtheit schwach (traditional use)"},"prep":{"f":["Tee/Infus (1,5–4,5 g/Tasse, mehrmals täglich)","Trocken-/Flüssigextrakt","topische Creme (Herpes)"],"why":"wasserlösliche Wirkstoffe → Tee für innerlich; für Herpes standardisierte topische Extrakt-Creme","dose":"Tee 1,5–4,5 g Blätter/Tasse; Herpes-Creme mehrmals täglich lokal"},"safe":{"ceil":"kein Toxin; sehr sichere Pflanze","ci":["Überempfindlichkeit"],"preg":"arzneilich mangels Daten zurückhaltend; Tee in üblichen Mengen meist unkritisch","int":["additive Sedierung mit anderen Sedativa/Hypnotika möglich (mild) [gering]","Schilddrüsen-/TSH-Beeinflussung in vitro diskutiert (historisch) [klinisch nicht belegt/relevant in üblichen Dosen]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":false,"interaction_heavy":false,"toxin_ceiling":false},"warn":"Zweiter 'Erwartung-dämpfen'-Fall: sehr beliebt und sicher, aber die innerliche (beruhigende) Evidenz ist schwach. Stärkste Evidenz liegt topisch bei Lippenherpes."},"harv":{"t":"Blätter vor der Blüte (höchstes Aroma), trockener Vormittag","m":[5,6,7],"o":"Blatt","st":"getrocknet dicht/lichtgeschützt; Aroma verliert sich rasch"},"gard":{"site":"humos, nährstoffreich, feucht, sonnig bis halbschattig","hard":"winterhart, mehrjährig, sät sich aus / breitet sich aus","prop":"Aussaat, Teilung oder Stecklinge; sehr wüchsig","bs":"sehr gut; dankbare, bienenfreundliche Einsteigerpflanze, ggf. eindämmen"}},{"id":"artemisia-absinthium","common":"Wermut","latin":"Artemisia absinthium L.","family":"Asteraceae (Korbblütler)","part":["Kraut (blühende Zweigspitzen + Laubblätter)"],"feat":["Silbrig-graugrün, seidig behaart (filzig)","Mehrfach fiederteilige Blätter","Kleine, gelbe, kugelige Blütenköpfchen in Rispen","Intensiv aromatisch-bitterer Geruch beim Zerreiben"],"season":"Blüte Juli bis September","habitat":"Trockene, sonnige, steinige Standorte, Wegränder, Ruderalflächen; auch Gartenkultur","conf":[{"n":"Gewöhnlicher Beifuß","l":"Artemisia vulgaris","t":"essbar/gering","tox":"","note":"grünere Blattoberseite, weniger silbrig, milder; andere (Gewürz-)Verwendung; keine toxische Verwechslung, aber wirkstofflich anders"}],"chem":{"g":["ätherisches Öl (0,2–1,0%) mit alpha-/beta-THUJON","Sesquiterpenlacton-Bitterstoffe (Absinthin, Anabsinthin, Artabsinthin)","Gerbstoffe","Flavone"],"lead":"Bitterstoffe (Absinthin — sehr hoher Bitterwert, appetitanregend); Thujon = sicherheitsrelevant","sol":"wasserlösliche Bitterstoffe → Tee/Bittertonikum; alkoholische Tinktur; Öl thujonhaltig"},"ind":[{"c":"Vorübergehende Appetitlosigkeit (Bittermittel)","s":["Appetitlosigkeit","Appetitmangel","Bittermittel","Amarum"],"tag":"TU/ESCOP+","exp":"Plausible appetitanregende Wirkung als Bittertonikum; kurzzeitig anwenden (Thujon).","src":"HMPC traditional use; ESCOP+; Kommission E (Appetitlosigkeit, Bittermittel)"},{"c":"Dyspeptische Beschwerden / Verdauungsförderung","s":["Verdauungsbeschwerden","Völlegefühl","Blähungen","Magenbeschwerden","dyspeptische Beschwerden","Gallefluss"],"tag":"TU/ESCOP+","exp":"Symptomatische Verdauungsförderung; nur kurzzeitig/nicht dauerhaft wegen Thujon.","src":"HMPC traditional use; Kommission E (dyspept. Beschwerden, Gallenwege)"}],"expect":{"ok":"Klassisches Bittertonikum bei Appetitlosigkeit/Verdauungsschwäche — kurzzeitig","no":"Dauergebrauch, hochprozentige Öl-/Absinth-Anwendung — gefährlich wegen Thujon (historische 'Absinthismus'-Vergiftungen)"},"prep":{"f":["Tee/Infus (bitter, kurz vor Mahlzeit)","Tinktur (Bittertropfen)","Bitterlikör (kulinarisch, thujonreguliert)"],"why":"wasserlösliche Bitterstoffe → Tee/Tinktur genügen; das thujonhaltige Öl NICHT konzentrieren","dose":"Tee klein dosiert (z. B. 1 TL/Tasse) kurzzeitig; Anwendung NICHT über längere Zeit"},"safe":{"ceil":"Thujon (alpha-/beta-) neurotoxisch/krampfauslösend (GABA-A-Antagonist); nicht über längere Zeit oder hochdosiert; EU regelt Thujon-Grenzwerte in Lebensmitteln/Spirituosen","ci":["Schwangerschaft","Stillzeit","Epilepsie/Krampfneigung","Magen-/Darmgeschwüre (Bitterstoffreizung)","Gallenwegsverschluss"],"preg":"kontraindiziert (Thujon, traditionell abortiv/emmenagog)","int":["additiv mit krampfschwellensenkenden Substanzen (Thujon) [relevant bei Krampfneigung/Antiepileptika]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":true,"interaction_heavy":false,"toxin_ceiling":true,"toxin_type":"Thujon","lowers_seizure_threshold":true},"warn":"ZWEITER THUJON-Träger (neben Salbei) — macht das Thujon-Register pflanzenübergreifend. Streng zeitlich begrenzt, kein Dauergebrauch, kein konzentriertes Öl; Schwangerschaft/Epilepsie kontraindiziert."},"harv":{"t":"blühende Zweigspitzen + Laubblätter zur Blütezeit (Juli-September)","m":[7,8,9],"o":"Kraut (blühend)","st":"getrocknet dicht/lichtgeschützt"},"gard":{"site":"vollsonnig, trocken, durchlässig, mager; trockenheitsverträglich","hard":"winterhart, mehrjährig, verholzend an der Basis","prop":"Aussaat, Teilung oder Stecklinge; robust","bs":"gut; dekorative silbrige Beetpflanze, hält Trockenheit aus — arzneilich nur bewusst/kurzzeitig nutzen"}},{"id":"plantago-lanceolata","common":"Spitzwegerich","latin":"Plantago lanceolata L.","family":"Plantaginaceae","part":["Blatt/Kraut (Plantaginis lanceolatae folium/herba)"],"feat":["Schmale, lanzettliche Blätter mit 3–7 deutlichen, parallelen Längsnerven","Blätter in bodenständiger Rosette","Langer, blattloser, gefurchter Blütenschaft mit kurzer walziger Blütenähre","Herausragende weißliche Staubblätter an der Ähre; beim Zerreiben mild-grasig"],"season":"Blüte Mai bis September","habitat":"Wiesen, Weiden, Wegränder, Rasen; sehr häufig, anspruchslos; tiefe Pfahlwurzel","conf":[{"n":"Breitwegerich / Mittlerer Wegerich","l":"Plantago major / media","t":"essbar","tox":"","note":"verwandte Wegerich-Arten, breitere Blätter, gleichfalls essbar/nutzbar; keine toxische Verwechslung"}],"chem":{"g":["Iridoidglykoside (Aucubin, Catalpol)","Schleimstoffe (Polysaccharide)","Gerbstoffe","Flavonoide","Kieselsäure"],"lead":"Aucubin (antimikrobiell/antiinflammatorisch), Schleimstoffe (reizlindernd), Gerbstoffe (adstringierend)","sol":"wasserlöslich → Tee/Sirup/Frischpflanzensaft; Schleimstoffe am besten als Kaltauszug/Tee"},"ind":[{"c":"Trockener Reizhusten / Schleimhautreizung Mund-Rachen (innerlich)","s":["Reizhusten","trockener Husten","Husten","Halskratzen","Halsschmerzen","Katarrh","Erkältungshusten","Schleimhautreizung"],"tag":"TU/ESCOP+","exp":"Sinnvolle, sehr risikoarme Reizlinderung bei trockenem Husten/Halskratzen; symptomatisch. Einer der sichersten Fälle im Katalog.","src":"HMPC traditional use; ESCOP+; Kommission E (Reizhusten/Schleimhautreizung)"},{"c":"Entzündungen Mund-/Rachenschleimhaut (topisch/Spülung)","s":["Mundschleimhautentzündung","Rachenentzündung","Gurgeln","wunder Hals"],"tag":"TU/ESCOP+","exp":"Risikoarme Lokalanwendung.","src":"ESCOP+; Kommission E (Mund-/Rachenschleimhaut, äußerlich)"},{"c":"Insektenstiche / kleine Hautreizungen (topisch, Frischblatt)","s":["Insektenstich","Mückenstich","Hautreizung","Juckreiz","kleine Wunde"],"tag":"TRAD","exp":"Traditionelles 'Feld-Hausmittel' bei Insektenstichen; kein belegter Ersatz, aber harmlos und praktisch.","src":"Erfahrungsheilkunde (Insektenstiche, Frischblatt)"}],"expect":{"ok":"Verlässliches, sehr sicheres Reizhusten-/Schleimhaut-Kraut; praktisches Frischblatt-Hausmittel bei Insektenstichen","no":"starke antibiotische/heilende Wirkungen — Aucubin-Antibiose bedarf weiterer Untersuchung; Evidenz traditional/moderat"},"prep":{"f":["Tee/Infus (ca. 3 g/150 ml, 10 min; 2–3 Tassen/Tag)","Hustensaft/Sirup","Frischpflanzensaft","zerquetschtes Frischblatt topisch"],"why":"wasserlösliche Schleim-/Gerbstoffe → Tee/Sirup; Frischsaft erhält empfindliches Aucubin am besten","dose":"mittlere Tagesdosis 4–6 g Kraut innerlich"},"safe":{"ceil":"kein Toxin; sehr sichere Pflanze","ci":["Allergie gegen Bestandteile","innerlich keine Anwendung bei Kindern < 3 Jahren (Datenlage); orale Schleimhautanwendung < 18 J. eingeschränkt"],"preg":"in üblichen Mengen als unkritisch angesehen; arzneilich im Zweifel Rücksprache","int":["übliche Teezubereitung [keine klinisch relevanten Interaktionen bekannt]"],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":false,"interaction_heavy":false,"toxin_ceiling":false,"high_safety":true},"warn":"Einer der sichersten Katalog-Einträge — keine relevante Verwechslung, kein Toxin, kaum Interaktionen. Ideale Einsteiger-Wildpflanze."},"harv":{"t":"Blätter/Kraut zur Blütezeit (Mai-September)","m":[5,6,7,8,9],"o":"Blatt/Kraut","st":"getrocknet dicht/lichtgeschützt; Frischsaft/Sirup gekühlt"},"gard":{"site":"anspruchslos; Wiesen-/Rasenpflanze, sonnig, fast jeder Boden","hard":"voll winterhart, mehrjährig, tiefe Pfahlwurzel","prop":"Selbstaussaat; meist ohnehin im Rasen vorhanden (aus der Natur gewinnbar)","bs":"sehr gut/ohnehin vorhanden; praktisch überall verfügbar, ideale Einsteigerpflanze"}}];
+
+/* ---------- Speicher (dauerhaft auf dem Gerät) ---------- */
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { alert('Speicher voll oder blockiert.'); } }
+};
+let herbs = [...HERBS, ...LS.get('imported', [])];
+let user = LS.get('user', {});          // { herbId: {notes, photos:[], loc} }
+const ud = id => user[id] || { notes: '', photos: [], loc: '' };
+const setUd = (id, patch) => { user[id] = { ...ud(id), ...patch }; LS.set('user', user); };
+
+const M = ['', 'Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------- Evidenz ---------- */
+function evStrength(tag) {
+  return Math.max(...String(tag).split('/').map(t =>
+    t.includes('WEU') || t.includes('RCT') ? 4 : t.includes('ESCOP') ? 3 : t.includes('TU') ? 2 : 1));
+}
+function evHTML(tag) {
+  const s = evStrength(tag);
+  let bars = '';
+  for (let i = 1; i <= 4; i++) bars += `<span class="evbar${i <= s ? ' on' : ''}" style="opacity:${i <= s ? .35 + i * .16 : 1}"></span>`;
+  return `<span class="ev"><span class="evb">${bars}</span><span class="evtag">${esc(tag)}</span></span>`;
+}
+const LEGEND = `<details class="legend"><summary>▸ Was bedeutet das Evidenz-Spektrum?</summary><div class="legend-in">
+${[[4, 'WEU / RCT', 'etabliert', 'wissenschaftlich hinreichend belegt (HMPC well-established use bzw. eigene RCT-Evidenz)'],
+   [3, 'ESCOP+', 'ESCOP-positiv', 'positive Experten-Monographie, oft überwiegend erfahrungsgestützt'],
+   [2, 'TU', 'traditionell', 'langjährige Anwendung (HMPC traditional use), keine belastbare klinische Evidenz'],
+   [1, 'PRÄ / TRAD', 'präklin./trad.', 'nur präklinisch (in vitro/Tier) oder rein traditionell']]
+  .map(([n, tag, lab, desc]) => {
+    let b = ''; for (let i = 1; i <= 4; i++) b += `<span class="evbar${i <= n ? ' on' : ''}" style="opacity:${i <= n ? .35 + i * .16 : 1}"></span>`;
+    return `<div class="lrow"><span class="evb">${b}</span><span class="ltag">${tag}</span><span><b>${lab}</b> — ${desc}</span></div>`;
+  }).join('')}
+<p class="lfoot">Die Farbsättigung kodiert nur die Evidenzstärke — getrennt von den Gefahren-Markierungen (Bernstein/Rot). Schwache Evidenz heißt „wenig belegt", nicht „gefährlich".</p>
+</div></details>`;
+
+/* ---------- Flags ---------- */
+function flagsHTML(h) {
+  const f = h.safe.flags || {}, out = [];
+  if (f.deadly_confusion) out.push('<span class="flag f-danger">tödl. Verwechslung</span>');
+  if (f.toxin_ceiling) out.push(`<span class="flag f-caution">${esc(f.toxin_type || 'Toxin')}</span>`);
+  if (f.raw_toxicity) out.push('<span class="flag f-caution">roh giftig</span>');
+  if (f.interaction_heavy) out.push('<span class="flag f-danger">Interaktionen</span>');
+  if (f.pregnancy_contraindicated) out.push('<span class="flag f-caution">Schwangerschaft</span>');
+  if (f.asteraceae_allergy) out.push('<span class="flag f-caution">Korbblütler</span>');
+  if (f.topical_only) out.push('<span class="flag f-info">nur topisch</span>');
+  if (f.high_safety) out.push('<span class="flag f-safe">risikoarm</span>');
+  return out.length ? `<div class="flags">${out.join('')}</div>` : '';
+}
+const toxCls = t => t.includes('lebensge') ? 'p-danger' : t.includes('giftig') ? 'p-caution' : '';
+const toxBadge = t => `<span class="tox ${t.includes('lebensge') ? 't-d' : t.includes('giftig') ? 't-c' : 't-s'}">${esc(t)}</span>`;
+function pairHTML(c) {
+  return `<div class="pair ${toxCls(c.t)}"><div class="ptop"><b>${esc(c.n)}</b>${toxBadge(c.t)}</div>
+  <div class="latin">${esc(c.l)}${c.tox ? ' · ' + esc(c.tox) : ''}</div><p class="pnote">${esc(c.note)}</p></div>`;
+}
+
+/* ---------- Router ---------- */
+let view = 'home', sel = null, layer = 'feld', reg = 'verw', calM = new Date().getMonth() + 1, q = '', catQ = '', msg = null;
+const app = document.getElementById('app');
+document.querySelectorAll('nav.bot button').forEach(b =>
+  b.onclick = () => { view = b.dataset.v; sel = null; msg = null; render(); });
+
+function nav() {
+  document.querySelectorAll('nav.bot button').forEach(b => b.classList.toggle('on', b.dataset.v === view && !sel));
+  document.getElementById('sub').textContent = herbs.length + ' Kräuter · Bodensee';
+}
+function openHerb(id) { sel = herbs.find(h => h.id === id); layer = 'feld'; render(); window.scrollTo(0, 0); }
+
+/* ---------- Views ---------- */
+function vHome() {
+  const due = herbs.filter(h => (h.harv.m || []).includes(calM));
+  return `<div class="hero"><h1>Draußen unterwegs?</h1><p>Bestimmen, nachschlagen, sicher entscheiden — auch ohne Netz.</p></div>
+  <div class="grid2">
+    <button class="tile" onclick="go('cat')"><span class="ic">☰</span><b>Kraut nachschlagen</b><span>${herbs.length} Monographien</span></button>
+    <button class="tile" onclick="go('reg')"><span class="ic">⚠</span><b>Verwechslungen</b><span>vor dem Sammeln prüfen</span></button>
+    <button class="tile" onclick="go('search')"><span class="ic">⌕</span><b>Nach Nutzen</b><span>Symptom → Kraut</span></button>
+    <button class="tile" onclick="go('cal')"><span class="ic">☷</span><b>Erntekalender</b><span>${due.length} im ${M[calM]} fällig</span></button>
+  </div>
+  ${due.length ? `<p class="eyebrow">Jetzt im ${M[calM]} erntereif</p>
+  <div class="cards2">${due.map(h => `<div class="card" onclick="openHerb('${h.id}')">
+    <div class="cname">${esc(h.common)}</div><div class="latin">${esc(h.latin)}</div>
+    <p class="cexp">${esc(h.harv.o)} · ${esc(h.harv.t)}</p>${flagsHTML(h)}</div>`).join('')}</div>` : ''}`;
+}
+
+function vSearch() {
+  let res = [];
+  const s = q.trim().toLowerCase();
+  if (s) for (const h of herbs) for (const i of h.ind)
+    if ((i.c + ' ' + i.s.join(' ')).toLowerCase().includes(s)) res.push({ h, i });
+  res.sort((a, b) => evStrength(b.i.tag) - evStrength(a.i.tag));
+  return `<p class="eyebrow">Indikationssuche</p><h1>Welche Beschwerde?</h1>
+  <p class="lede">Auch umgangssprachlich. Treffer nach Evidenzstärke sortiert.</p>
+  <input class="search" id="q" value="${esc(q)}" placeholder="z. B. Halsschmerzen, Husten, Reizdarm …">
+  <div class="chips">${['Halsschmerzen', 'Husten', 'Reizdarm', 'Schlaf', 'Wunde', 'Verdauung', 'Prostata', 'Herpes']
+    .map(c => `<button class="chip" onclick="setQ('${c}')">${c}</button>`).join('')}</div>
+  ${s && !res.length ? '<div class="empty">Kein Treffer. Andere Schreibweise oder anderes Symptom versuchen.</div>' : ''}
+  <div class="cards2">${res.map(({ h, i }) => `<div class="card" onclick="openHerb('${h.id}')">
+    <div class="ctop"><div><div class="cname">${esc(h.common)}</div><div class="latin">${esc(h.latin)}</div></div>${evHTML(i.tag)}</div>
+    <div class="cind">${esc(i.c)}</div><p class="cexp">${esc(i.exp)}</p>
+    ${i.src ? `<p class="csrc">Quelle: ${esc(i.src)}</p>` : ''}${flagsHTML(h)}</div>`).join('')}</div>
+  ${res.length ? LEGEND : ''}`;
+}
+
+function vCal() {
+  const due = herbs.filter(h => (h.harv.m || []).includes(calM)).sort((a, b) => a.common.localeCompare(b.common));
+  return `<p class="eyebrow">Aus den Ernte-Zeitfenstern generiert</p><h1>Erntekalender</h1>
+  <p class="lede">Was ist wann fällig — quer über die ganze Sammlung.</p>
+  <div class="calm">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m =>
+    `<button class="cm${m === calM ? ' on' : ''}" onclick="setCal(${m})">${M[m]}</button>`).join('')}</div>
+  ${!due.length ? `<div class="empty">Im ${M[calM]} ist nichts zur Ernte vermerkt.</div>` :
+  due.map(h => `<div class="card" onclick="openHerb('${h.id}')">
+    <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+      <span class="cname">${esc(h.common)}</span><span class="corgan">${esc(h.harv.o)}</span></div>
+    <div class="strip">${[3,4,5,6,7,8,9,10,11].map(m =>
+      `<span class="cell${(h.harv.m||[]).includes(m) ? ' on' : ''}${m === calM ? ' now' : ''}">${M[m][0]}</span>`).join('')}</div>
+    <p class="cexp">${esc(h.harv.t)}</p></div>`).join('')}`;
+}
+
+function vReg() {
+  const tabs = [['verw', 'Verwechslung'], ['tox', 'Toxine'], ['int', 'Interaktionen'], ['all', 'Korbblütler'], ['ki', 'Kontraind.']];
+  let body = '';
+  if (reg === 'verw') {
+    const all = herbs.flatMap(h => (h.conf || []).map(c => ({ h, c })))
+      .sort((a, b) => (a.c.t.includes('lebensge') ? 0 : a.c.t.includes('giftig') ? 1 : 2) - (b.c.t.includes('lebensge') ? 0 : b.c.t.includes('giftig') ? 1 : 2));
+    body = all.map(({ h, c }) => `<div class="pair ${toxCls(c.t)}" onclick="openHerb('${h.id}')">
+      <div class="ptop"><b>${esc(h.common)} ↔ ${esc(c.n)}</b>${toxBadge(c.t)}</div>
+      <div class="latin">${esc(c.l)}${c.tox ? ' · ' + esc(c.tox) : ''}</div><p class="pnote">${esc(c.note)}</p></div>`).join('');
+  } else if (reg === 'tox') {
+    body = herbs.filter(h => { const f = h.safe.flags || {}; return f.toxin_ceiling || f.raw_toxicity || f.hepatotoxic; })
+      .map(h => `<div class="card" onclick="openHerb('${h.id}')"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="cname">${esc(h.common)}</span>${flagsHTML(h)}</div><p class="cexp">${esc(h.safe.ceil)}</p></div>`).join('');
+  } else if (reg === 'int') {
+    body = herbs.filter(h => { const f = h.safe.flags || {}; return f.interaction_heavy || f.lowers_seizure_threshold || f.serotonergic; })
+      .map(h => { const f = h.safe.flags || {}; const t = [];
+        if (f.cyp3a4_inducer) t.push('<span class="flag f-danger">CYP3A4↑</span>');
+        if (f.pgp_inducer) t.push('<span class="flag f-danger">P-gp↑</span>');
+        if (f.serotonergic) t.push('<span class="flag f-caution">serotonerg</span>');
+        if (f.lowers_seizure_threshold) t.push('<span class="flag f-caution">Krampfschwelle↓</span>');
+        return `<div class="card" onclick="openHerb('${h.id}')"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span class="cname">${esc(h.common)}</span>${t.join('')}</div>
+        <ul style="margin-top:8px;font-size:13px;color:var(--soft)">${h.safe.int.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`; }).join('');
+  } else if (reg === 'all') {
+    body = `<p class="lede">Alle Korbblütler (Asteraceae) — bei bekannter Allergie Kreuzreaktion möglich:</p>` +
+      herbs.filter(h => (h.safe.flags || {}).asteraceae_allergy).map(h =>
+        `<div class="card" onclick="openHerb('${h.id}')"><div class="cname">${esc(h.common)}</div><div class="latin">${esc(h.latin)}</div></div>`).join('');
+  } else {
+    body = herbs.filter(h => (h.safe.flags || {}).pregnancy_contraindicated || (h.safe.ci || []).length)
+      .map(h => `<div class="card" onclick="openHerb('${h.id}')"><div class="cname">${esc(h.common)}</div>
+      ${(h.safe.flags || {}).pregnancy_contraindicated ? '<div class="flags"><span class="flag f-caution">Schwangerschaft</span></div>' : ''}
+      <ul style="margin-top:8px;font-size:13px;color:var(--soft)">${(h.safe.ci || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('');
+  }
+  return `<p class="eyebrow">Querschnitt über alle ${herbs.length} Arten</p><h1>Register</h1>
+  <div class="tabs">${tabs.map(([k, l]) => `<button class="tab${reg === k ? ' on' : ''}" onclick="setReg('${k}')">${l}</button>`).join('')}</div>
+  ${body || '<div class="empty">Keine Einträge.</div>'}`;
+}
+
+function vCat() {
+  const s = catQ.trim().toLowerCase();
+  const list = herbs.filter(h => !s || (h.common + ' ' + h.latin + ' ' + h.family).toLowerCase().includes(s));
+  return `<p class="eyebrow">Sammlung</p><h1>${herbs.length} Monographien</h1>
+  <div class="acts">
+    <label class="btn">⬆ Import (JSON)<input type="file" accept=".json,application/json" hidden onchange="doImport(event)"></label>
+    <button class="btn btn-o" onclick="doExport()">⬇ Sichern</button>
+  </div>
+  ${msg ? `<div class="msg ${msg.ok ? 'ok' : 'err'}">${esc(msg.t)}</div>` : ''}
+  <input id="cq" value="${esc(catQ)}" placeholder="Kraut suchen — Name, botanisch, Familie …" style="margin-bottom:14px">
+  <div class="cards2">${list.map(h => `<div class="card" onclick="openHerb('${h.id}')">
+    <div class="cname">${esc(h.common)} ${h._imp ? '<span class="itag">importiert</span>' : ''}</div>
+    <div class="latin">${esc(h.latin)}</div><p class="cexp">${esc(h.family)}</p>${flagsHTML(h)}</div>`).join('')}</div>
+  ${!list.length ? '<div class="empty">Kein Treffer.</div>' : ''}`;
+}
+
+function vMono() {
+  const h = sel, f = h.safe.flags || {}, u = ud(h.id);
+  const tabs = [['feld', 'Feld'], ['mono', 'Monographie'], ['prax', 'Praxis'], ['gart', 'Garten'], ['notiz', 'Notizen']];
+  let body = '';
+  if (layer === 'feld') {
+    body = `<div class="block"><h3 class="btitle">Leitmerkmale</h3><ul>${h.feat.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+    <div class="block"><h3 class="btitle">Standort & Saison</h3><p>${esc(h.habitat)}</p><p class="soft">${esc(h.season)}</p></div>
+    <div class="block"><h3 class="btitle">Verwechslungen</h3>
+    ${h.conf.length ? h.conf.map(pairHTML).join('') : '<p class="soft">Keine relevanten Verwechslungen erfasst.</p>'}</div>`;
+  } else if (layer === 'mono') {
+    body = `<div class="block"><h3 class="btitle">Wirkstoffchemie</h3>
+    <p><b>Gruppen:</b> ${esc(h.chem.g.join(', '))}</p><p><b>Leitsubstanz:</b> ${esc(h.chem.lead)}</p>
+    <p class="soft">${esc(h.chem.sol)}</p></div>
+    <div class="block"><h3 class="btitle">Indikationen nach Evidenz</h3>
+    ${h.ind.map(i => `<div class="ind"><div class="indtop"><span class="indname">${esc(i.c)}</span>${evHTML(i.tag)}</div>
+    <p class="cexp">${esc(i.exp)}</p>${i.src ? `<p class="csrc">Quelle: ${esc(i.src)}</p>` : ''}</div>`).join('')}</div>
+    ${LEGEND}
+    <div class="block" style="margin-top:14px"><h3 class="btitle">Realistische Erwartung</h3>
+    <p><b>Plausibel:</b> ${esc(h.expect.ok)}</p><p class="soft"><b>Überzogen:</b> ${esc(h.expect.no)}</p></div>`;
+  } else if (layer === 'prax') {
+    body = `<div class="block"><h3 class="btitle">Zubereitung</h3><ul>${h.prep.f.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+    <p class="soft" style="margin-top:8px">${esc(h.prep.why)}</p>${h.prep.dose ? `<p><b>Dosis:</b> ${esc(h.prep.dose)}</p>` : ''}</div>
+    <div class="block"><h3 class="btitle">Ernte & Lagerung</h3><p>${esc(h.harv.t)}</p>
+    ${(h.harv.m || []).length ? `<div class="strip">${[3,4,5,6,7,8,9,10,11].map(m =>
+      `<span class="cell${h.harv.m.includes(m) ? ' on' : ''}">${M[m][0]}</span>`).join('')}</div>` : ''}
+    <p class="soft">${esc(h.harv.st)}</p></div>
+    <div class="block"><h3 class="btitle">Sicherheit</h3>
+    <p style="color:var(--amber);font-weight:500">${esc(h.safe.warn)}</p>
+    ${h.safe.ceil ? `<p><b>Grenze:</b> ${esc(h.safe.ceil)}</p>` : ''}
+    ${(h.safe.ci || []).length ? `<p><b>Kontraindikationen:</b> ${esc(h.safe.ci.join('; '))}</p>` : ''}
+    <p><b>Schwangerschaft:</b> ${esc(h.safe.preg)}</p>
+    ${(h.safe.int || []).length ? `<p><b>Interaktionen:</b></p><ul>${h.safe.int.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>`;
+  } else if (layer === 'gart') {
+    body = `<div class="block"><h3 class="btitle">Standort</h3><p>${esc(h.gard.site)}</p></div>
+    <div class="block"><h3 class="btitle">Winterhärte & Vermehrung</h3><p>${esc(h.gard.hard)}</p><p class="soft">${esc(h.gard.prop)}</p></div>
+    <div class="block"><h3 class="btitle">Bodensee-Eignung</h3><p>${esc(h.gard.bs)}</p></div>`;
+  } else {
+    body = `<div class="msg" style="background:var(--infobg);color:var(--info);border:1px solid #C3D3E0">
+    Persönliche Ebene — getrennt von den kuratierten Fakten. Wird dauerhaft auf diesem Gerät gespeichert.</div>
+    <div class="block"><h3 class="btitle">Notizen</h3>
+    <textarea id="nt" rows="5" placeholder="Eigene Beobachtungen, Fundhinweise, was im Garten funktioniert hat …">${esc(u.notes)}</textarea></div>
+    <div class="block"><h3 class="btitle">Eigene Fotos</h3>
+    <label class="btn">＋ Foto<input type="file" accept="image/*" hidden onchange="addPhoto(event,'${h.id}')"></label>
+    ${!u.photos.length ? '<p class="soft" style="margin-top:9px;font-size:13px">Noch keine Fotos. Eigene Aufnahmen lösen zugleich das Lizenzproblem fremder Bilder.</p>' : ''}
+    <div class="photos">${u.photos.map((p, i) => `<div class="ph"><img src="${p}" alt=""><button class="phx" onclick="delPhoto('${h.id}',${i})">×</button></div>`).join('')}</div></div>
+    <div class="block"><h3 class="btitle">Fundort</h3>
+    <input id="lc" value="${esc(u.loc)}" placeholder="z. B. Auwald bei Wollmatingen, Nordhang …"></div>`;
+  }
+  return `<button class="back" onclick="go('${view}')">← zurück</button>
+  <p class="eyebrow">${esc(h.family)} · ${esc((h.part || []).join(', '))}</p>
+  <h1>${esc(h.common)}</h1><p class="latin" style="font-size:14px;margin:0 0 12px">${esc(h.latin)}</p>
+  ${f.deadly_confusion ? '<div class="banner">⚠ Sicherheitskritisch: tödliche Verwechslung möglich. Bestimmung hat Vorrang vor jeder Verwendung.</div>' : ''}
+  ${f.topical_only ? '<div class="banner banner-i">Nur äußerlich anwenden — nicht innerlich.</div>' : ''}
+  <div class="tabs">${tabs.map(([k, l]) => `<button class="tab${layer === k ? ' on' : ''}" onclick="setLayer('${k}')">${l}${k === 'notiz' && (u.notes || u.photos.length) ? ' •' : ''}</button>`).join('')}</div>
+  ${body}`;
+}
+
+/* ---------- Aktionen ---------- */
+function go(v) { view = v; sel = null; msg = null; render(); window.scrollTo(0, 0); }
+function setQ(v) { q = v; render(); }
+function setCal(m) { calM = m; render(); }
+function setReg(r) { reg = r; render(); }
+function setLayer(l) {
+  if (sel && layer === 'notiz') saveNotes();
+  layer = l; render(); window.scrollTo(0, 0);
+}
+function saveNotes() {
+  const nt = document.getElementById('nt'), lc = document.getElementById('lc');
+  if (nt || lc) setUd(sel.id, { notes: nt ? nt.value : ud(sel.id).notes, loc: lc ? lc.value : ud(sel.id).loc });
+}
+function addPhoto(e, id) {
+  const file = e.target.files[0]; if (!file) return;
+  const img = new Image(), fr = new FileReader();
+  fr.onload = () => { img.onload = () => {
+    const max = 900, sc = Math.min(1, max / Math.max(img.width, img.height));
+    const cv = document.createElement('canvas');
+    cv.width = img.width * sc; cv.height = img.height * sc;
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    const u = ud(id); setUd(id, { photos: [...u.photos, cv.toDataURL('image/jpeg', .75)] }); render();
+  }; img.src = fr.result; };
+  fr.readAsDataURL(file); e.target.value = '';
+}
+function delPhoto(id, i) { const u = ud(id); setUd(id, { photos: u.photos.filter((_, j) => j !== i) }); render(); }
+
+function doImport(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try {
+      const p = JSON.parse(fr.result), list = Array.isArray(p) ? p : [p];
+      let n = 0;
+      const imported = LS.get('imported', []);
+      for (const o of list) {
+        const h = normalize(o); if (!h) continue;
+        const i = herbs.findIndex(x => x.id === h.id);
+        if (i >= 0) herbs[i] = h; else herbs.push(h);
+        const j = imported.findIndex(x => x.id === h.id);
+        if (j >= 0) imported[j] = h; else imported.push(h);
+        n++;
+      }
+      LS.set('imported', imported);
+      msg = n ? { ok: 1, t: n + ' Monographie(n) importiert und dauerhaft gespeichert.' } : { ok: 0, t: 'Keine gültige Monographie gefunden (Pflichtfelder: id, indications).' };
+    } catch (err) { msg = { ok: 0, t: 'Ungültiges JSON: ' + err.message }; }
+    render();
+  };
+  fr.readAsText(file); e.target.value = '';
+}
+/* Akzeptiert sowohl das App-Format als auch das ausführliche monographie-*.json-Format */
+function normalize(o) {
+  if (!o || !o.id) return null;
+  if (o.ind && o.common) return { ...o, _imp: 1 };            // schon App-Format
+  if (!o.indications || !o.botany) return null;                // Vollformat erwartet
+  const b = o.botany, id2 = o.identification || {}, s = o.safety || {}, hp = o.harvest_processing_storage || {}, g = o.garden || {};
+  const ch = o.chemistry || {};
+  return {
+    id: o.id, common: (b.common_names_de || [o.id])[0], latin: b.scientific_name || '', family: b.family || '',
+    part: b.drug_part || [], feat: id2.key_features || [], season: id2.season || '', habitat: id2.habitat || '',
+    conf: (o.confusions || []).map(c => ({ n: c.name, l: c.scientific_name || '', t: c.toxicity_level || '', tox: c.toxin || '', note: c.note || c.distinguishing_features || '' })),
+    chem: { g: ch.main_groups || ch.main_groups_leaf || ch.main_groups_blossom || [], lead: ch.lead_substance || '', sol: ch.solubility_note || '' },
+    ind: (o.indications || []).map(i => ({ c: i.canonical || '', s: i.synonyms || [], tag: i.evidence_tag || 'TRAD', exp: i.realistic_expectation || '', src: i.source || '' })),
+    expect: { ok: (o.expectation_summary || {}).plausible || '', no: (o.expectation_summary || {}).overstated || '' },
+    prep: { f: (o.preparation || {}).recommended_forms || [], why: (o.preparation || {}).form_rationale || '', dose: (o.preparation || {}).standard_dose || '' },
+    safe: { ceil: s.tox_ceiling || '', ci: s.contraindications || [], preg: s.pregnancy_lactation || '',
+      int: (s.interactions || []).map(x => (x.mechanism || '') + (x.affected ? ' → ' + x.affected : '') + (x.clinical_relevance ? ' [' + x.clinical_relevance + ']' : '')),
+      flags: s.flags || {}, warn: s.key_warning || '' },
+    harv: { t: hp.harvest_time || '', m: hp.harvest_month_tags || [], o: hp.harvest_organ || '', st: hp.storage || '' },
+    gard: { site: g.site_soil || '', hard: g.hardiness || '', prop: g.propagation || '', bs: g.bodensee_suitability || '' },
+    _imp: 1
+  };
+}
+function doExport() {
+  const data = { imported: LS.get('imported', []), user: user, date: new Date().toISOString() };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  a.download = 'herbarium-sicherung.json'; a.click();
+}
+
+/* ---------- Render ---------- */
+function render() {
+  app.innerHTML = sel ? vMono() : view === 'home' ? vHome() : view === 'search' ? vSearch()
+    : view === 'cal' ? vCal() : view === 'reg' ? vReg() : vCat();
+  nav();
+  const qi = document.getElementById('q');
+  if (qi) { qi.oninput = e => { q = e.target.value; const p = qi.selectionStart; render(); const n = document.getElementById('q'); if (n) { n.focus(); n.setSelectionRange(p, p); } }; }
+  const ci = document.getElementById('cq');
+  if (ci) { ci.oninput = e => { catQ = e.target.value; const p = ci.selectionStart; render(); const n = document.getElementById('cq'); if (n) { n.focus(); n.setSelectionRange(p, p); } }; }
+  const nt = document.getElementById('nt'); if (nt) nt.onblur = saveNotes;
+  const lc = document.getElementById('lc'); if (lc) lc.onblur = saveNotes;
+}
+render();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script></body></html>
