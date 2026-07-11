@@ -140,7 +140,7 @@ color:var(--info);padding:2px 5px;border-radius:4px;vertical-align:middle}
 </style>
 </head>
 <body>
-<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · Bodensee</div></div></header>
+<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v3</div></div></header>
 <main id="app"></main>
 <nav class="bot">
 <button data-v="home" class="on"><span class="ic">✽</span>Start</button>
@@ -216,7 +216,7 @@ document.querySelectorAll('nav.bot button').forEach(b =>
 
 function nav() {
   document.querySelectorAll('nav.bot button').forEach(b => b.classList.toggle('on', b.dataset.v === view && !sel));
-  document.getElementById('sub').textContent = herbs.length + ' Kräuter · Bodensee';
+  document.getElementById("sub").textContent = herbs.length + " Kräuter · v3";
 }
 function openHerb(id) { sel = herbs.find(h => h.id === id); layer = 'feld'; render(); window.scrollTo(0, 0); }
 
