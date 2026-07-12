@@ -1,7 +1,7 @@
 /* Service Worker v3
    HTML: network-first  -> Updates kommen IMMER an, offline fällt er auf den Cache zurück.
    Icons/Manifest: cache-first -> schnell und offline verfügbar. */
-const CACHE = 'herbarium-v3';
+const CACHE = 'herbarium-v5';
 const FILES = ['./', './index.html', './manifest.json',
                './icon-192.png', './icon-512.png', './icon-512-maskable.png'];
 

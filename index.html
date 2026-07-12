@@ -136,16 +136,71 @@ color:var(--info);padding:2px 5px;border-radius:4px;vertical-align:middle}
 .tile .ic{font-size:20px}
 .tile b{display:block;font-family:Fraunces,Georgia,serif;font-size:15px;margin:6px 0 2px}
 .tile span{font-size:12px;color:var(--soft)}
+
+.imgs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+.slot{position:relative;aspect-ratio:1;border-radius:10px;border:1.5px dashed var(--line);background:var(--surface2);
+display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden}
+.slot.has{border-style:solid;border-color:var(--line)}
+.slot img{width:100%;height:100%;object-fit:cover;display:block}
+.slot .plus{font-size:22px;color:var(--green2)}
+.slot .lbl{position:absolute;bottom:0;left:0;right:0;background:rgba(28,38,33,.72);color:#fff;font-size:9px;
+padding:3px 4px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace}
+.slot .del{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:none;
+background:rgba(28,38,33,.75);color:#fff;font-size:13px;line-height:1;padding:0;cursor:pointer;display:none}
+.slot.has .del{display:block}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.vs .side{text-align:center}
+.vs .side .slot{aspect-ratio:1}
+.vs .cap{font-size:10.5px;margin-top:4px;font-weight:600}
+.vs .cap i{display:block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:400;font-size:9.5px;opacity:.75}
+.modal{position:fixed;inset:0;background:rgba(28,38,33,.55);z-index:50;display:flex;align-items:flex-end}
+.sheet{background:var(--paper);width:100%;max-height:88vh;border-radius:18px 18px 0 0;padding:18px;
+overflow-y:auto;padding-bottom:calc(18px + env(safe-area-inset-bottom))}
+.sheet h2{margin-bottom:4px}
+.sheet .close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:24px;color:var(--soft);
+cursor:pointer;width:auto;padding:0}
+.wgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.wg{aspect-ratio:1;border-radius:9px;overflow:hidden;border:1px solid var(--line);cursor:pointer;background:var(--surface2)}
+.wg img{width:100%;height:100%;object-fit:cover;display:block}
+.spin{text-align:center;padding:26px;color:var(--soft);font-size:14px}
+.bar{height:6px;background:var(--surface2);border-radius:4px;overflow:hidden;margin:10px 0}
+.bar div{height:100%;background:var(--green);width:0;transition:width .2s}
+
+.map{position:relative;width:100%;height:300px;border-radius:12px;overflow:hidden;border:1px solid var(--line);
+background:#DDE3D6;touch-action:none;user-select:none}
+.map.sm{height:210px}
+.mt{position:absolute;width:256px;height:256px;pointer-events:none}
+.mt.miss{background:repeating-linear-gradient(45deg,#DDE3D6,#DDE3D6 8px,#D2D9CA 8px,#D2D9CA 16px)}
+.pin{position:absolute;transform:translate(-50%,-100%);font-size:22px;line-height:1;pointer-events:auto;cursor:pointer;
+filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))}
+.me{position:absolute;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:#3A7BD5;
+border:2.5px solid #fff;box-shadow:0 0 0 2px rgba(58,123,213,.35);pointer-events:none}
+.mctl{position:absolute;right:9px;top:9px;display:flex;flex-direction:column;gap:5px;z-index:3}
+.mctl button{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:rgba(244,246,239,.93);
+color:var(--ink);font-size:17px;line-height:1;padding:0;cursor:pointer}
+.mattr{position:absolute;bottom:0;right:0;background:rgba(244,246,239,.82);font-size:8.5px;color:var(--soft);
+padding:2px 5px;border-radius:5px 0 0 0;z-index:2}
+.find{display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--line)}
+.find:first-child{border-top:none}
+.find .fi{flex:1;min-width:0}
+.find .fn{font-weight:600;font-size:14px}
+.find .fm{font-size:12px;color:var(--soft)}
+.find .fd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--green);white-space:nowrap;text-align:right}
+.find .fx{background:none;border:none;color:var(--soft);font-size:17px;cursor:pointer;width:auto;padding:2px 4px}
+.pickrow{display:flex;gap:7px;margin-top:10px}
+.pickrow input{flex:1}
+.pickrow button{width:auto;flex-shrink:0}
 @media(min-width:700px){.cards2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cards2 .card{margin-bottom:0}}
 </style>
 </head>
 <body>
-<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v3</div></div></header>
+<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v5</div></div></header>
 <main id="app"></main>
+<div id="modal" style="display:none" onclick="closePicker()"></div>
 <nav class="bot">
-<button data-v="home" class="on"><span class="ic">✽</span>Start</button>
-<button data-v="search"><span class="ic">⌕</span>Nutzen</button>
+<button data-v="search" class="on"><span class="ic">⌕</span>Nutzen</button>
 <button data-v="cal"><span class="ic">☷</span>Ernte</button>
+<button data-v="map"><span class="ic">◉</span>Karte</button>
 <button data-v="reg"><span class="ic">⚠</span>Register</button>
 <button data-v="cat"><span class="ic">☰</span>Katalog</button>
 </nav>
@@ -208,15 +263,382 @@ function pairHTML(c) {
   <div class="latin">${esc(c.l)}${c.tox ? ' · ' + esc(c.tox) : ''}</div><p class="pnote">${esc(c.note)}</p></div>`;
 }
 
+
+/* ================= BILDER (IndexedDB — hunderte MB Platz) ================= */
+const IDB = {
+  db: null,
+  open() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('herbarium-img', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('img');
+      r.onsuccess = () => { IDB.db = r.result; res(r.result); };
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async tx(mode) { const db = IDB.db || await IDB.open(); return db.transaction('img', mode).objectStore('img'); },
+  async get(k) { const s = await IDB.tx('readonly'); return new Promise(r => { const q = s.get(k); q.onsuccess = () => r(q.result || null); q.onerror = () => r(null); }); },
+  async set(k, v) { const s = await IDB.tx('readwrite'); return new Promise(r => { const q = s.put(v, k); q.onsuccess = () => r(1); q.onerror = () => r(0); }); },
+  async del(k) { const s = await IDB.tx('readwrite'); return new Promise(r => { const q = s.delete(k); q.onsuccess = () => r(1); q.onerror = () => r(0); }); },
+  async keys() { const s = await IDB.tx('readonly'); return new Promise(r => { const q = s.getAllKeys(); q.onsuccess = () => r(q.result || []); q.onerror = () => r([]); }); },
+  async clear() { const s = await IDB.tx('readwrite'); return new Promise(r => { const q = s.clear(); q.onsuccess = () => r(1); q.onerror = () => r(0); }); }
+};
+const objURL = new Map();
+async function imgSrc(k) {
+  if (objURL.has(k)) return objURL.get(k);
+  const b = await IDB.get(k);
+  if (!b) return null;
+  const u = URL.createObjectURL(b);
+  objURL.set(k, u);
+  return u;
+}
+async function hydrate() {
+  for (const el of document.querySelectorAll('img[data-k]')) {
+    const u = await imgSrc(el.dataset.k);
+    if (u) { el.src = u; const s = el.closest('.slot'); if (s) s.classList.add('has'); }
+  }
+}
+async function delImg(k) {
+  await IDB.del(k);
+  if (objURL.has(k)) { URL.revokeObjectURL(objURL.get(k)); objURL.delete(k); }
+  render();
+}
+
+/* --- Wikimedia Commons: Bilder zu einem botanischen Namen finden --- */
+async function wikiFind(latin, n) {
+  const base = 'https://commons.wikimedia.org/w/api.php?format=json&origin=*&prop=imageinfo&iiprop=url&iiurlwidth=500';
+  const clean = latin.replace(/\s*\(.*?\)\s*/g, '').replace(/\s+(L\.|spp?\.|×)\s*/gi, ' ').replace(/\s+/g, ' ').trim();
+  const tries = [
+    base + '&generator=categorymembers&gcmtype=file&gcmlimit=' + n + '&gcmtitle=' + encodeURIComponent('Category:' + clean),
+    base + '&generator=search&gsrnamespace=6&gsrlimit=' + n + '&gsrsearch=' + encodeURIComponent(clean + ' filetype:bitmap')
+  ];
+  for (const url of tries) {
+    try {
+      const r = await fetch(url);
+      const j = await r.json();
+      const pages = j.query && j.query.pages ? Object.values(j.query.pages) : [];
+      const hits = pages.filter(p => p.imageinfo && p.imageinfo[0].thumburl)
+        .map(p => ({ thumb: p.imageinfo[0].thumburl, title: (p.title || '').replace(/^File:/, '') }));
+      if (hits.length) return hits;
+    } catch (e) { /* nächster Versuch */ }
+  }
+  return [];
+}
+async function fetchBlob(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return await r.blob();
+}
+
+/* --- Auswahl-Fenster --- */
+let pick = null;   // {key, latin, label}
+function openPicker(key, latin, label) { pick = { key, latin, label, q: latin, hits: null, err: null }; renderModal(); wikiLoad(); }
+function pickSearch() {
+  const i = document.getElementById('wq');
+  if (!i || !pick) return;
+  pick.q = i.value.trim() || pick.latin;
+  pick.hits = null; pick.err = null;
+  renderModal(); wikiLoad();
+}
+function closePicker() { pick = null; renderModal(); }
+async function wikiLoad() {
+  try {
+    const hits = await wikiFind(pick.q || pick.latin, 18);
+    if (!pick) return;
+    pick.hits = hits;
+    pick.err = hits.length ? null : 'Keine Bilder gefunden. Nutze „Aus Galerie wählen".';
+  } catch (e) { if (pick) { pick.hits = []; pick.err = 'Kein Internet? Bilder holen braucht einmalig Netz.'; } }
+  renderModal();
+}
+async function pickWiki(url) {
+  const k = pick.key;
+  try {
+    const b = await fetchBlob(url);
+    await IDB.set(k, b);
+    objURL.delete(k);
+    closePicker();
+  } catch (e) { pick.err = 'Bild konnte nicht geladen werden.'; renderModal(); }
+}
+function pickFile(e) {
+  const f = e.target.files[0]; if (!f || !pick) return;
+  const k = pick.key;
+  const img = new Image(), fr = new FileReader();
+  fr.onload = () => { img.onload = () => {
+    const max = 800, sc = Math.min(1, max / Math.max(img.width, img.height));
+    const cv = document.createElement('canvas');
+    cv.width = img.width * sc; cv.height = img.height * sc;
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    cv.toBlob(async b => { await IDB.set(k, b); objURL.delete(k); closePicker(); }, 'image/jpeg', .8);
+  }; img.src = fr.result; };
+  fr.readAsDataURL(f); e.target.value = '';
+}
+function renderModal() {
+  const m = document.getElementById('modal');
+  if (!pick) { m.innerHTML = ''; m.style.display = 'none'; if (typeof render === 'function') render(); return; }
+  m.style.display = 'flex';
+  m.innerHTML = `<div class="sheet" onclick="event.stopPropagation()">
+    <button class="close" onclick="closePicker()">×</button>
+    <h2>${esc(pick.label)}</h2>
+    <p class="latin" style="margin:0 0 10px">${esc(pick.latin)}</p>
+    <label class="btn btn-o">🖼 Aus Galerie wählen<input type="file" accept="image/*" hidden onchange="pickFile(event)"></label>
+    <div class="pickrow">
+      <input id="wq" value="${esc(pick.q || pick.latin)}" placeholder="Suchbegriff …">
+      <button class="btn" onclick="pickSearch()">Suchen</button>
+    </div>
+    <p class="lfoot" style="border:none;margin:6px 0 0">Tipp: Suchbegriff verfeinern, z. B. „${esc((pick.latin || '').split(' ').slice(0,2).join(' '))} leaf" für Blattaufnahmen statt Blütenporträts.</p>
+    ${pick.err ? `<div class="msg err" style="margin-top:12px">${esc(pick.err)}</div>` : ''}
+    ${pick.hits === null ? '<div class="spin">Suche Bilder auf Wikimedia Commons …</div>' :
+      pick.hits.length ? `<p class="eyebrow" style="margin-top:16px">Wikimedia Commons — antippen zum Speichern</p>
+      <div class="wgrid">${pick.hits.map(h =>
+        `<div class="wg" onclick="pickWiki('${h.thumb.replace(/'/g, "\\'")}')"><img src="${h.thumb}" loading="lazy" alt=""></div>`).join('')}</div>` : ''}
+    <p class="lfoot" style="border:none;margin-top:14px">Bilder werden dauerhaft auf dem Gerät gespeichert und sind danach offline verfügbar.</p>
+  </div>`;
+}
+
+/* --- Bilder-Slots rendern --- */
+function slot(key, latin, label, cap) {
+  return `<div class="slot" onclick="openPicker('${key}','${esc(latin).replace(/'/g, "&#39;")}','${esc(label).replace(/'/g, "&#39;")}')">
+    <img data-k="${key}" alt=""><span class="plus">＋</span>
+    ${cap ? `<span class="lbl">${esc(cap)}</span>` : ''}
+    <button class="del" onclick="event.stopPropagation();delImg('${key}')">×</button></div>`;
+}
+
+/* --- Alle Bilder auf einmal holen (im WLAN) --- */
+let bulk = null;
+async function bulkLoad() {
+  const jobs = [];
+  for (const h of herbs) {
+    jobs.push({ k: h.id + ':0', latin: h.latin });
+    (h.conf || []).forEach((c, i) => { if (c.l) jobs.push({ k: h.id + ':c' + i, latin: c.l }); });
+  }
+  bulk = { done: 0, total: jobs.length, ok: 0 };
+  render();
+  for (const j of jobs) {
+    if (!(await IDB.get(j.k))) {
+      try {
+        const hits = await wikiFind(j.latin, 1);
+        if (hits.length) { await IDB.set(j.k, await fetchBlob(hits[0].thumb)); objURL.delete(j.k); bulk.ok++; }
+      } catch (e) { /* überspringen */ }
+    } else bulk.ok++;
+    bulk.done++;
+    if (bulk.done % 3 === 0 || bulk.done === bulk.total) render();
+  }
+  msg = { ok: 1, t: bulk.ok + ' von ' + bulk.total + ' Bildern verfügbar. Offline nutzbar.' };
+  bulk = null;
+  render();
+}
+async function clearImgs() {
+  if (!confirm('Alle gespeicherten Bilder löschen?')) return;
+  await IDB.clear();
+  objURL.forEach(u => URL.revokeObjectURL(u)); objURL.clear();
+  msg = { ok: 1, t: 'Bilder gelöscht.' };
+  render();
+}
+
+
+/* ================= KARTE & FUNDORTE ================= */
+let finds = LS.get('finds', []);                 // [{id, herb, lat, lon, t, note}]
+const saveFinds = () => LS.set('finds', finds);
+let mapS = { lat: 47.66, lon: 9.18, z: 13 };     // Start: Bodensee
+let mapFilter = '';                              // '' = alle
+let here = null;                                 // aktuelle GPS-Position
+let tileMsg = null;
+
+/* --- Slippy-Map-Mathematik --- */
+const P = z => Math.pow(2, z);
+const lon2x = (lo, z) => (lo + 180) / 360 * P(z);
+const lat2y = (la, z) => { const r = la * Math.PI / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * P(z); };
+const x2lon = (x, z) => x / P(z) * 360 - 180;
+const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / P(z); return 180 / Math.PI * Math.atan(.5 * (Math.exp(n) - Math.exp(-n))); };
+
+/* --- Entfernung & Himmelsrichtung (funktioniert IMMER, auch ohne Karte) --- */
+function dist(a, b, c, d) {
+  const R = 6371000, p = Math.PI / 180;
+  const h = .5 - Math.cos((c - a) * p) / 2 + Math.cos(a * p) * Math.cos(c * p) * (1 - Math.cos((d - b) * p)) / 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function bearing(a, b, c, d) {
+  const p = Math.PI / 180, y = Math.sin((d - b) * p) * Math.cos(c * p);
+  const x = Math.cos(a * p) * Math.sin(c * p) - Math.sin(a * p) * Math.cos(c * p) * Math.cos((d - b) * p);
+  return (Math.atan2(y, x) / p + 360) % 360;
+}
+const COMPASS = ['N', 'NO', 'O', 'SO', 'S', 'SW', 'W', 'NW'];
+const fmtDist = m => m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km';
+function relTo(f) {
+  if (!here) return '';
+  const d = dist(here.lat, here.lon, f.lat, f.lon);
+  const b = COMPASS[Math.round(bearing(here.lat, here.lon, f.lat, f.lon) / 45) % 8];
+  return fmtDist(d) + ' · ' + b;
+}
+
+/* --- Kacheln: aus IndexedDB, sonst laden (nur online) --- */
+async function tileSrc(z, x, y) {
+  const k = 't:' + z + '/' + x + '/' + y;
+  if (objURL.has(k)) return objURL.get(k);
+  let b = await IDB.get(k);
+  if (!b) {
+    try {
+      const r = await fetch(`https://tile.openstreetmap.org/${z}/${x}/${y}.png`);
+      if (!r.ok) return null;
+      b = await r.blob();
+      await IDB.set(k, b);
+    } catch (e) { return null; }
+  }
+  const u = URL.createObjectURL(b);
+  objURL.set(k, u);
+  return u;
+}
+async function hydrateTiles() {
+  for (const el of document.querySelectorAll('img[data-t]')) {
+    const [z, x, y] = el.dataset.t.split('/').map(Number);
+    const u = await tileSrc(z, x, y);
+    if (u) { el.src = u; el.classList.remove('miss'); }
+  }
+}
+
+/* --- Karte zeichnen --- */
+function mapHTML(list, small, herbId) {
+  const W = 340, H = small ? 210 : 300;   // Näherung; Pins werden per % gesetzt
+  const z = mapS.z;
+  const cx = lon2x(mapS.lon, z) * 256, cy = lat2y(mapS.lat, z) * 256;
+  const x0 = cx - W / 2, y0 = cy - H / 2;
+  const t0x = Math.floor(x0 / 256), t1x = Math.floor((x0 + W) / 256);
+  const t0y = Math.floor(y0 / 256), t1y = Math.floor((y0 + H) / 256);
+  let tiles = '';
+  for (let tx = t0x; tx <= t1x; tx++) for (let ty = t0y; ty <= t1y; ty++) {
+    if (ty < 0 || ty >= P(z)) continue;
+    const wx = ((tx % P(z)) + P(z)) % P(z);
+    tiles += `<img class="mt miss" data-t="${z}/${wx}/${ty}" style="left:${tx * 256 - x0}px;top:${ty * 256 - y0}px" alt="">`;
+  }
+  const pins = list.map(f => {
+    const px = lon2x(f.lon, z) * 256 - x0, py = lat2y(f.lat, z) * 256 - y0;
+    if (px < -30 || px > W + 30 || py < -30 || py > H + 30) return '';
+    const h = herbs.find(x => x.id === f.herb);
+    return `<span class="pin" style="left:${px}px;top:${py}px" title="${esc(h ? h.common : '')}"
+      onclick="event.stopPropagation();openHerb('${f.herb}')">📍</span>`;
+  }).join('');
+  const meDot = here ? (() => {
+    const px = lon2x(here.lon, z) * 256 - x0, py = lat2y(here.lat, z) * 256 - y0;
+    return `<span class="me" style="left:${px}px;top:${py}px"></span>`;
+  })() : '';
+  return `<div class="map${small ? ' sm' : ''}" id="map">
+    ${tiles}${pins}${meDot}
+    <div class="mctl">
+      <button onclick="mapZ(1)">+</button>
+      <button onclick="mapZ(-1)">−</button>
+      <button onclick="locate()" title="Mein Standort">◎</button>
+    </div>
+    <span class="mattr">© OpenStreetMap</span>
+  </div>`;
+}
+function mapZ(d) { mapS.z = Math.max(6, Math.min(18, mapS.z + d)); render(); }
+
+/* --- Standort --- */
+function locate(then) {
+  if (!navigator.geolocation) { alert('Standort wird nicht unterstützt.'); return; }
+  navigator.geolocation.getCurrentPosition(p => {
+    here = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy };
+    mapS.lat = here.lat; mapS.lon = here.lon;
+    if (then) then(); else render();
+  }, e => alert('Standort nicht verfügbar: ' + e.message), { enableHighAccuracy: true, timeout: 12000 });
+}
+function logFind(herbId) {
+  locate(() => {
+    finds.push({ id: Date.now(), herb: herbId, lat: here.lat, lon: here.lon, t: Date.now(), note: '' });
+    saveFinds();
+    msg = { ok: 1, t: 'Fundort gespeichert (±' + Math.round(here.acc) + ' m).' };
+    render();
+  });
+}
+function delFind(id) { finds = finds.filter(f => f.id !== id); saveFinds(); render(); }
+
+/* --- Kartenbereich vorladen (offline) --- */
+let pre = null;
+async function preload() {
+  const z0 = mapS.z, list = [];
+  for (let z = z0; z <= Math.min(z0 + 2, 17); z++) {
+    const cx = lon2x(mapS.lon, z), cy = lat2y(mapS.lat, z);
+    const r = z === z0 ? 2 : z === z0 + 1 ? 3 : 5;
+    for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++)
+      list.push([z, Math.floor(cx) + dx, Math.floor(cy) + dy]);
+  }
+  const capped = list.slice(0, 200);   // bewusst begrenzt (OSM-Nutzungsregeln)
+  pre = { done: 0, total: capped.length };
+  render();
+  for (const [z, x, y] of capped) { await tileSrc(z, x, y); pre.done++; if (pre.done % 8 === 0) render(); }
+  pre = null;
+  msg = { ok: 1, t: capped.length + ' Kartenkacheln offline gespeichert.' };
+  render();
+}
+
+
+/* --- Karte per Finger verschieben --- */
+function bindMap() {
+  const m = document.getElementById('map');
+  if (!m) return;
+  let sx = 0, sy = 0, moved = false, active = false;
+  m.addEventListener('pointerdown', e => {
+    if (e.target.closest('.mctl') || e.target.closest('.pin')) return;
+    active = true; moved = false; sx = e.clientX; sy = e.clientY;
+    m.setPointerCapture(e.pointerId);
+  });
+  m.addEventListener('pointermove', e => {
+    if (!active) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
+    m.style.transform = `translate(${dx}px,${dy}px)`;
+  });
+  m.addEventListener('pointerup', e => {
+    if (!active) return;
+    active = false;
+    m.style.transform = '';
+    if (!moved) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy, z = mapS.z;
+    mapS.lon = x2lon(lon2x(mapS.lon, z) - dx / 256, z);
+    mapS.lat = y2lat(lat2y(mapS.lat, z) - dy / 256, z);
+    render();
+  });
+}
+
+/* --- Kartenansicht --- */
+function vMap() {
+  const list = finds.filter(f => !mapFilter || f.herb === mapFilter);
+  const sorted = here ? [...list].sort((a, b) =>
+    dist(here.lat, here.lon, a.lat, a.lon) - dist(here.lat, here.lon, b.lat, b.lon)) : [...list].reverse();
+  const used = [...new Set(finds.map(f => f.herb))];
+  return `<p class="eyebrow">Deine Fundorte</p><h1>Karte</h1>
+  <p class="lede">${finds.length ? finds.length + ' Fund' + (finds.length === 1 ? '' : 'e') + ' gespeichert.' : 'Noch keine Fundorte. Öffne ein Kraut → Notizen → „Hier gefunden".'}</p>
+  ${used.length > 1 ? `<select onchange="mapFilter=this.value;render()" style="margin-bottom:12px">
+    <option value="">Alle Kräuter</option>
+    ${used.map(id => { const h = herbs.find(x => x.id === id); return `<option value="${id}"${mapFilter === id ? ' selected' : ''}>${esc(h ? h.common : id)}</option>`; }).join('')}
+  </select>` : ''}
+  ${mapHTML(list, false)}
+  <div class="acts">
+    <button class="btn btn-o" onclick="locate()">◎ Mein Standort</button>
+    <button class="btn btn-o" onclick="preload()">⬇ Bereich offline laden</button>
+  </div>
+  ${pre ? `<div class="msg ok">Lade Kartenkacheln … ${pre.done}/${pre.total}
+    <div class="bar"><div style="width:${Math.round(pre.done / pre.total * 100)}%"></div></div></div>` : ''}
+  ${msg ? `<div class="msg ${msg.ok ? 'ok' : 'err'}">${esc(msg.t)}</div>` : ''}
+  ${sorted.length ? `<div class="block"><h3 class="btitle">Fundliste${here ? ' — nach Entfernung' : ''}</h3>
+    ${sorted.map(f => { const h = herbs.find(x => x.id === f.herb); return `<div class="find">
+      <div class="fi" onclick="openHerb('${f.herb}')">
+        <div class="fn">${esc(h ? h.common : f.herb)}</div>
+        <div class="fm">${new Date(f.t).toLocaleDateString('de-DE')} · ${f.lat.toFixed(4)}, ${f.lon.toFixed(4)}</div></div>
+      <div class="fd">${relTo(f) || '—'}</div>
+      <button class="fx" onclick="delFind(${f.id})">×</button></div>`; }).join('')}
+    ${!here ? '<p class="lfoot" style="border:none">Tippe „Mein Standort" für Entfernung und Himmelsrichtung — das funktioniert auch ohne Karte, komplett offline.</p>' : ''}
+  </div>` : ''}`;
+}
+
 /* ---------- Router ---------- */
-let view = 'home', sel = null, layer = 'feld', reg = 'verw', calM = new Date().getMonth() + 1, q = '', catQ = '', msg = null;
+let view = 'search', sel = null, layer = 'feld', reg = 'verw', calM = new Date().getMonth() + 1, q = '', catQ = '', msg = null;
 const app = document.getElementById('app');
 document.querySelectorAll('nav.bot button').forEach(b =>
   b.onclick = () => { view = b.dataset.v; sel = null; msg = null; render(); });
 
 function nav() {
   document.querySelectorAll('nav.bot button').forEach(b => b.classList.toggle('on', b.dataset.v === view && !sel));
-  document.getElementById("sub").textContent = herbs.length + " Kräuter · v3";
+  document.getElementById("sub").textContent = herbs.length + " Kräuter · v5";
 }
 function openHerb(id) { sel = herbs.find(h => h.id === id); layer = 'feld'; render(); window.scrollTo(0, 0); }
 
@@ -315,7 +737,12 @@ function vCat() {
   <div class="acts">
     <label class="btn">⬆ Import (JSON)<input type="file" accept=".json,application/json" hidden onchange="doImport(event)"></label>
     <button class="btn btn-o" onclick="doExport()">⬇ Sichern</button>
+    <button class="btn btn-o" onclick="bulkLoad()">🖼 Alle Bilder laden</button>
+    <button class="btn btn-o" onclick="clearImgs()">Bilder löschen</button>
   </div>
+  ${bulk ? `<div class="msg ok">Lade Bilder von Wikimedia … ${bulk.done}/${bulk.total}
+    <div class="bar"><div style="width:${Math.round(bulk.done / bulk.total * 100)}%"></div></div>
+    <span class="soft" style="font-size:12px">Einmalig im WLAN — danach offline verfügbar.</span></div>` : ''}
   ${msg ? `<div class="msg ${msg.ok ? 'ok' : 'err'}">${esc(msg.t)}</div>` : ''}
   <input id="cq" value="${esc(catQ)}" placeholder="Kraut suchen — Name, botanisch, Familie …" style="margin-bottom:14px">
   <div class="cards2">${list.map(h => `<div class="card" onclick="openHerb('${h.id}')">
@@ -329,10 +756,24 @@ function vMono() {
   const tabs = [['feld', 'Feld'], ['mono', 'Monographie'], ['prax', 'Praxis'], ['gart', 'Garten'], ['notiz', 'Notizen']];
   let body = '';
   if (layer === 'feld') {
-    body = `<div class="block"><h3 class="btitle">Leitmerkmale</h3><ul>${h.feat.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+    const cap = ['Habitus', 'Merkmal', 'Merkmal'];
+    body = `<div class="block"><h3 class="btitle">Erkennungsbilder</h3>
+    <div class="imgs">${[0,1,2].map(i => slot(h.id + ':' + i, h.latin, h.common, cap[i])).join('')}</div>
+    <p class="lfoot" style="border:none;margin-top:9px">Antippen zum Hinzufügen — aus Wikimedia Commons oder der eigenen Galerie.</p></div>
+    <div class="block"><h3 class="btitle">Leitmerkmale</h3><ul>${h.feat.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
     <div class="block"><h3 class="btitle">Standort & Saison</h3><p>${esc(h.habitat)}</p><p class="soft">${esc(h.season)}</p></div>
-    <div class="block"><h3 class="btitle">Verwechslungen</h3>
-    ${h.conf.length ? h.conf.map(pairHTML).join('') : '<p class="soft">Keine relevanten Verwechslungen erfasst.</p>'}</div>`;
+    <div class="block"><h3 class="btitle">Verwechslungen — Direktvergleich</h3>
+    ${h.conf.length ? h.conf.map((c, i) => `
+      <div class="pair ${toxCls(c.t)}">
+        <div class="ptop"><b>${esc(h.common)} ↔ ${esc(c.n)}</b>${toxBadge(c.t)}</div>
+        <div class="vs">
+          <div class="side">${slot(h.id + ':0', h.latin, h.common, 'richtig')}
+            <div class="cap">${esc(h.common)} <i>${esc(h.latin)}</i></div></div>
+          <div class="side">${slot(h.id + ':c' + i, c.l || c.n, c.n, 'Doppelgänger')}
+            <div class="cap">${esc(c.n)} <i>${esc(c.l)}</i></div></div>
+        </div>
+        <p class="pnote">${esc(c.note)}</p>
+      </div>`).join('') : '<p class="soft">Keine relevanten Verwechslungen erfasst.</p>'}</div>`;
   } else if (layer === 'mono') {
     body = `<div class="block"><h3 class="btitle">Wirkstoffchemie</h3>
     <p><b>Gruppen:</b> ${esc(h.chem.g.join(', '))}</p><p><b>Leitsubstanz:</b> ${esc(h.chem.lead)}</p>
@@ -369,8 +810,18 @@ function vMono() {
     <label class="btn">＋ Foto<input type="file" accept="image/*" hidden onchange="addPhoto(event,'${h.id}')"></label>
     ${!u.photos.length ? '<p class="soft" style="margin-top:9px;font-size:13px">Noch keine Fotos. Eigene Aufnahmen lösen zugleich das Lizenzproblem fremder Bilder.</p>' : ''}
     <div class="photos">${u.photos.map((p, i) => `<div class="ph"><img src="${p}" alt=""><button class="phx" onclick="delPhoto('${h.id}',${i})">×</button></div>`).join('')}</div></div>
-    <div class="block"><h3 class="btitle">Fundort</h3>
-    <input id="lc" value="${esc(u.loc)}" placeholder="z. B. Auwald bei Wollmatingen, Nordhang …"></div>`;
+    <div class="block"><h3 class="btitle">Fundort (Notiz)</h3>
+    <input id="lc" value="${esc(u.loc)}" placeholder="z. B. Auwald bei Wollmatingen, Nordhang …"></div>
+    ${(() => { const mine = finds.filter(f => f.herb === h.id); return `
+    <div class="block"><h3 class="btitle">Fundorte auf der Karte</h3>
+      <button class="btn" onclick="logFind('${h.id}')">📍 Hier gefunden</button>
+      ${mine.length ? mapHTML(mine, true, h.id) + `<div style="margin-top:6px">${mine.map(f => `<div class="find">
+          <div class="fi"><div class="fn">${new Date(f.t).toLocaleDateString('de-DE')}</div>
+          <div class="fm">${f.lat.toFixed(4)}, ${f.lon.toFixed(4)}</div></div>
+          <div class="fd">${relTo(f) || '—'}</div>
+          <button class="fx" onclick="delFind(${f.id})">×</button></div>`).join('')}</div>`
+        : '<p class="soft" style="margin-top:9px;font-size:13px">Noch keine Fundorte für ' + esc(h.common) + '. Beim nächsten Fund draußen antippen — Position wird per GPS gespeichert.</p>'}
+    </div>`; })()}`;
   }
   return `<button class="back" onclick="go('${view}')">← zurück</button>
   <p class="eyebrow">${esc(h.family)} · ${esc((h.part || []).join(', '))}</p>
@@ -463,15 +914,20 @@ function doExport() {
 
 /* ---------- Render ---------- */
 function render() {
-  app.innerHTML = sel ? vMono() : view === 'home' ? vHome() : view === 'search' ? vSearch()
-    : view === 'cal' ? vCal() : view === 'reg' ? vReg() : vCat();
+  app.innerHTML = sel ? vMono() : view === 'search' ? vSearch()
+    : view === 'cal' ? vCal() : view === 'map' ? vMap() : view === 'reg' ? vReg() : vCat();
   nav();
   const qi = document.getElementById('q');
   if (qi) { qi.oninput = e => { q = e.target.value; const p = qi.selectionStart; render(); const n = document.getElementById('q'); if (n) { n.focus(); n.setSelectionRange(p, p); } }; }
   const ci = document.getElementById('cq');
   if (ci) { ci.oninput = e => { catQ = e.target.value; const p = ci.selectionStart; render(); const n = document.getElementById('cq'); if (n) { n.focus(); n.setSelectionRange(p, p); } }; }
+  const wq = document.getElementById('wq');
+  if (wq) wq.onkeydown = e => { if (e.key === 'Enter') pickSearch(); };
   const nt = document.getElementById('nt'); if (nt) nt.onblur = saveNotes;
   const lc = document.getElementById('lc'); if (lc) lc.onblur = saveNotes;
+  hydrate();
+  hydrateTiles();
+  bindMap();
 }
 render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
