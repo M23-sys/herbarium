@@ -169,6 +169,7 @@ cursor:pointer;width:auto;padding:0}
 .map{position:relative;width:100%;height:300px;border-radius:12px;overflow:hidden;border:1px solid var(--line);
 background:#DDE3D6;touch-action:none;user-select:none}
 .map.sm{height:210px}
+.mlayer{position:absolute;inset:0;will-change:transform}
 .mt{position:absolute;width:256px;height:256px;pointer-events:none}
 .mt.miss{background:repeating-linear-gradient(45deg,#DDE3D6,#DDE3D6 8px,#D2D9CA 8px,#D2D9CA 16px)}
 .pin{position:absolute;transform:translate(-50%,-100%);font-size:22px;line-height:1;pointer-events:auto;cursor:pointer;
@@ -194,9 +195,9 @@ padding:2px 5px;border-radius:5px 0 0 0;z-index:2}
 </style>
 </head>
 <body>
-<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v5</div></div></header>
+<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v6</div></div></header>
 <main id="app"></main>
-<div id="modal" style="display:none" onclick="closePicker()"></div>
+<div id="modal" class="modal" style="display:none" onclick="closePicker()"></div>
 <nav class="bot">
 <button data-v="search" class="on"><span class="ic">⌕</span>Nutzen</button>
 <button data-v="cal"><span class="ic">☷</span>Ernte</button>
@@ -285,11 +286,22 @@ const IDB = {
 const objURL = new Map();
 async function imgSrc(k) {
   if (objURL.has(k)) return objURL.get(k);
-  const b = await IDB.get(k);
-  if (!b) return null;
-  const u = URL.createObjectURL(b);
+  const v = await IDB.get(k);
+  if (!v) return null;
+  if (typeof v === 'string') { objURL.set(k, v); return v; }   // Fallback: gespeicherte Adresse
+  const u = URL.createObjectURL(v);
   objURL.set(k, u);
   return u;
+}
+/* Speichert ein Bild: bevorzugt als Datei (echt offline).
+   Scheitert der Download an CORS, wird die Adresse gemerkt —
+   ein <img> lädt sie trotzdem, und der Service Worker legt sie in den Cache. */
+async function saveRemote(k, url) {
+  let okBlob = false;
+  try { await IDB.set(k, await fetchBlob(url)); okBlob = true; }
+  catch (e) { await IDB.set(k, url); }
+  objURL.delete(k);
+  return okBlob;
 }
 async function hydrate() {
   for (const el of document.querySelectorAll('img[data-k]')) {
@@ -351,12 +363,8 @@ async function wikiLoad() {
 }
 async function pickWiki(url) {
   const k = pick.key;
-  try {
-    const b = await fetchBlob(url);
-    await IDB.set(k, b);
-    objURL.delete(k);
-    closePicker();
-  } catch (e) { pick.err = 'Bild konnte nicht geladen werden.'; renderModal(); }
+  try { await saveRemote(k, url); closePicker(); }
+  catch (e) { pick.err = 'Bild konnte nicht gespeichert werden.'; renderModal(); }
 }
 function pickFile(e) {
   const f = e.target.files[0]; if (!f || !pick) return;
@@ -412,17 +420,25 @@ async function bulkLoad() {
   }
   bulk = { done: 0, total: jobs.length, ok: 0 };
   render();
+  let offlineReady = 0, urlOnly = 0, failed = 0;
   for (const j of jobs) {
     if (!(await IDB.get(j.k))) {
       try {
         const hits = await wikiFind(j.latin, 1);
-        if (hits.length) { await IDB.set(j.k, await fetchBlob(hits[0].thumb)); objURL.delete(j.k); bulk.ok++; }
-      } catch (e) { /* überspringen */ }
-    } else bulk.ok++;
+        if (hits.length) {
+          const asBlob = await saveRemote(j.k, hits[0].thumb);
+          if (asBlob) offlineReady++; else urlOnly++;
+          bulk.ok++;
+        } else failed++;
+      } catch (e) { failed++; }
+    } else { bulk.ok++; offlineReady++; }
     bulk.done++;
     if (bulk.done % 3 === 0 || bulk.done === bulk.total) render();
   }
-  msg = { ok: 1, t: bulk.ok + ' von ' + bulk.total + ' Bildern verfügbar. Offline nutzbar.' };
+  msg = bulk.ok
+    ? { ok: 1, t: bulk.ok + ' von ' + bulk.total + ' Bildern gespeichert' +
+        (urlOnly ? ' (' + offlineReady + ' offline, ' + urlOnly + ' nur online — Service Worker legt sie beim ersten Ansehen ab).' : ' — offline nutzbar.') }
+    : { ok: 0, t: 'Keine Bilder geladen. Bist du online? Wikimedia war nicht erreichbar.' };
   bulk = null;
   render();
 }
@@ -521,7 +537,7 @@ function mapHTML(list, small, herbId) {
     return `<span class="me" style="left:${px}px;top:${py}px"></span>`;
   })() : '';
   return `<div class="map${small ? ' sm' : ''}" id="map">
-    ${tiles}${pins}${meDot}
+    <div class="mlayer" id="mlayer">${tiles}${pins}${meDot}</div>
     <div class="mctl">
       <button onclick="mapZ(1)">+</button>
       <button onclick="mapZ(-1)">−</button>
@@ -571,32 +587,59 @@ async function preload() {
 }
 
 
-/* --- Karte per Finger verschieben --- */
+/* --- Karte per Finger verschieben + Zwei-Finger-Zoom --- */
 function bindMap() {
   const m = document.getElementById('map');
-  if (!m) return;
-  let sx = 0, sy = 0, moved = false, active = false;
+  const L = document.getElementById('mlayer');
+  if (!m || !L) return;
+  const pts = new Map();
+  let sx = 0, sy = 0, moved = false, pinch0 = 0, scale = 1;
+  const spread = () => { const a = [...pts.values()]; return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); };
+
   m.addEventListener('pointerdown', e => {
     if (e.target.closest('.mctl') || e.target.closest('.pin')) return;
-    active = true; moved = false; sx = e.clientX; sy = e.clientY;
-    m.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { m.setPointerCapture(e.pointerId); } catch (err) {}
+    if (pts.size === 1) { sx = e.clientX; sy = e.clientY; moved = false; }
+    if (pts.size === 2) { pinch0 = spread(); scale = 1; }
   });
+
   m.addEventListener('pointermove', e => {
-    if (!active) return;
-    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size >= 2) {                              // Zwei-Finger-Zoom
+      const d = spread();
+      if (pinch0 > 0) { scale = d / pinch0; L.style.transform = 'scale(' + scale + ')'; }
+      moved = true;
+      return;
+    }
+    const dx = e.clientX - sx, dy = e.clientY - sy;   // Verschieben
     if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
-    m.style.transform = `translate(${dx}px,${dy}px)`;
+    L.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
   });
-  m.addEventListener('pointerup', e => {
-    if (!active) return;
-    active = false;
-    m.style.transform = '';
+
+  const end = e => {
+    if (!pts.has(e.pointerId)) return;
+    const wasPinch = pts.size >= 2;
+    pts.delete(e.pointerId);
+    if (wasPinch) {
+      pts.clear();
+      L.style.transform = '';
+      const dz = Math.round(Math.log(scale || 1) / Math.log(2));
+      scale = 1;
+      if (dz) mapZ(dz); else render();
+      return;
+    }
+    if (pts.size > 0) return;
+    L.style.transform = '';
     if (!moved) return;
     const dx = e.clientX - sx, dy = e.clientY - sy, z = mapS.z;
     mapS.lon = x2lon(lon2x(mapS.lon, z) - dx / 256, z);
     mapS.lat = y2lat(lat2y(mapS.lat, z) - dy / 256, z);
     render();
-  });
+  };
+  m.addEventListener('pointerup', end);
+  m.addEventListener('pointercancel', end);
 }
 
 /* --- Kartenansicht --- */
@@ -638,7 +681,7 @@ document.querySelectorAll('nav.bot button').forEach(b =>
 
 function nav() {
   document.querySelectorAll('nav.bot button').forEach(b => b.classList.toggle('on', b.dataset.v === view && !sel));
-  document.getElementById("sub").textContent = herbs.length + " Kräuter · v5";
+  document.getElementById("sub").textContent = herbs.length + " Kräuter · v6";
 }
 function openHerb(id) { sel = herbs.find(h => h.id === id); layer = 'feld'; render(); window.scrollTo(0, 0); }
 

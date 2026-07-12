@@ -1,7 +1,7 @@
 /* Service Worker v3
    HTML: network-first  -> Updates kommen IMMER an, offline fällt er auf den Cache zurück.
    Icons/Manifest: cache-first -> schnell und offline verfügbar. */
-const CACHE = 'herbarium-v5';
+const CACHE = 'herbarium-v6';
 const FILES = ['./', './index.html', './manifest.json',
                './icon-192.png', './icon-512.png', './icon-512-maskable.png'];
 
@@ -36,11 +36,14 @@ self.addEventListener('fetch', e => {
   } else {
     // cache-first für Icons/Manifest
     e.respondWith(
-      caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
-        return res;
-      }).catch(() => hit))
+      caches.match(e.request).then(hit => {
+        if (hit) return hit;
+        return fetch(e.request).then(res => {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+          return res;
+        }).catch(() => Response.error());
+      })
     );
   }
 });
