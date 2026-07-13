@@ -223,13 +223,16 @@ border:1px solid var(--line);background:var(--surface);color:var(--soft);cursor:
 .wadd{display:flex;gap:7px;margin-top:11px}
 .wadd input{flex:1}
 .wadd button{width:auto;flex-shrink:0}
+details.block summary::-webkit-details-marker{display:none}
+details.block summary{margin:0}
+details.block[open] summary span:last-child{transform:rotate(180deg);display:inline-block}
 .draft{background:#F2E4CF;border:1px solid var(--amber);color:var(--amber);border-radius:11px;padding:13px 15px;
 font-size:13.5px;font-weight:500;margin-bottom:12px}
 @media(min-width:700px){.cards2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cards2 .card{margin-bottom:0}}
 </style>
 </head>
 <body>
-<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v13</div></div></header>
+<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v14</div></div></header>
 <main id="app"></main>
 <div id="modal" class="modal" style="display:none" onclick="closePicker()"></div>
 <nav class="bot">
@@ -1178,34 +1181,56 @@ Antworte NUR mit dem JSON-Objekt.`;
 async function aiDraft(latin, common, id) {
   if (!aiKey) { msg = { ok: 0, t: 'Kein Claude-Schlüssel hinterlegt (Reiter Bestimmen → ganz unten).' }; render(); return; }
   if (!pnProxy) { msg = { ok: 0, t: 'Kein Zwischenserver hinterlegt — wird auch für Claude gebraucht.' }; render(); return; }
-  aiBusy = true; msg = { ok: 1, t: 'Claude schreibt einen Entwurf für „' + (common || latin) + '" …' }; render();
+  aiBusy = true; msg = { ok: 1, t: 'Claude schreibt einen Entwurf für „' + (common || latin) + '" … das dauert 30–60 Sekunden.' }; render();
   try {
     const r = await fetch(pnProxy.replace(/\/+$/, '') + '/claude', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': aiKey },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 4000,
+        max_tokens: 16000,                 // reichlich Platz: Denkblöcke + JSON
         messages: [{ role: 'user', content: AI_PROMPT(latin, common, id) }]
       })
     });
+
     const j = await r.json();
-    if (!r.ok) throw new Error(j && j.error && j.error.message ? j.error.message : 'HTTP ' + r.status);
-    let txt = (j.content || []).map(c => c.text || '').join('').trim();
-    txt = txt.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
-    const obj = JSON.parse(txt);
+
+    if (!r.ok) {
+      const em = j && j.error && j.error.message ? j.error.message : (j && j.message ? j.message : 'HTTP ' + r.status);
+      throw new Error('Claude antwortet nicht: ' + em);
+    }
+
+    // NUR Textblöcke nehmen — Denkblöcke ("thinking") überspringen
+    let txt = (j.content || []).filter(c => c.type === 'text').map(c => c.text || '').join('').trim();
+
+    if (!txt) throw new Error('Leere Antwort. stop_reason: ' + (j.stop_reason || '?'));
+    if (j.stop_reason === 'max_tokens') throw new Error('Antwort wurde abgeschnitten (zu lang). Nochmal versuchen.');
+
+    // JSON herausschneiden, auch wenn Text drumherum steht
+    const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
+    if (a < 0 || b <= a) throw new Error('Kein JSON in der Antwort. Anfang war: ' + txt.slice(0, 120));
+    const raw = txt.slice(a, b + 1);
+
+    let obj;
+    try { obj = JSON.parse(raw); }
+    catch (pe) { throw new Error('JSON unlesbar (' + pe.message + '). Anfang: ' + raw.slice(0, 120)); }
+
     const h = normalize(obj);
-    if (!h) throw new Error('Antwort passte nicht ins Schema.');
+    if (!h) throw new Error('Antwort passte nicht ins Schema (id oder indications fehlten).');
+
     h._draft = 1; h._stub = 0;
     const i = herbs.findIndex(x => x.id === h.id);
     if (i >= 0) herbs[i] = h; else herbs.push(h);
     const imp = LS.get('imported', []).filter(x => x.id !== h.id);
     imp.push(h); LS.set('imported', imp);
     wish = wish.filter(w => w.id !== h.id); LS.set('wish', wish);
-    msg = { ok: 1, t: 'ENTWURF erstellt — bitte prüfen und freigeben.' };
-    sel = h; layer = 'mono'; view = 'cat';
+
+    msg = { ok: 1, t: 'ENTWURF für „' + h.common + '" erstellt — bitte prüfen und freigeben.' };
+    sel = h; layer = 'mono';
   } catch (e) {
-    msg = { ok: 0, t: 'Entwurf fehlgeschlagen: ' + e.message };
+    msg = { ok: 0, t: (e.message.includes('Failed to fetch') || e.message.includes('NetworkError'))
+      ? 'Keine Verbindung zum Zwischenserver. Hast du den Worker-Code auf die neue Fassung (mit /claude) aktualisiert?'
+      : e.message };
   }
   aiBusy = false; render();
 }
@@ -1228,7 +1253,7 @@ document.querySelectorAll('nav.bot button').forEach(b =>
 
 function nav() {
   document.querySelectorAll('nav.bot button').forEach(b => b.classList.toggle('on', b.dataset.v === view && !sel));
-  document.getElementById("sub").textContent = herbs.length + " Kräuter · v13";
+  document.getElementById("sub").textContent = herbs.length + " Kräuter · v14";
 }
 function openHerb(id) { sel = herbs.find(h => h.id === id); layer = 'feld'; render(); window.scrollTo(0, 0); }
 
@@ -1336,7 +1361,9 @@ function vCat() {
     <span class="soft" style="font-size:12px">Einmalig im WLAN — danach offline verfügbar.</span></div>` : ''}
   ${msg ? `<div class="msg ${msg.ok ? 'ok' : 'err'}">${esc(msg.t)}</div>` : ''}
   ${(() => { const stubs = herbs.filter(h => h._stub); const all = stubs.length + wish.length; return `
-  <div class="block"><h3 class="btitle">Wunschliste · ${all}</h3>
+  <details class="block" ${all ? '' : ''}><summary class="btitle" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
+    <span>Wunschliste · ${all}</span><span style="font-size:13px">▾</span></summary>
+    <div style="margin-top:10px">
     ${!all ? '<p class="soft" style="font-size:13px">Leer. Merkposten aus der Bestimmung landen automatisch hier.</p>' : ''}
     ${stubs.map(h => `<div class="wrow">
       <div class="wi" onclick="openHerb('${h.id}')"><div class="wn">${esc(h.common)}</div>
@@ -1354,7 +1381,8 @@ function vCat() {
       <button class="btn" onclick="addWishManual()">＋</button>
     </div>
     ${all ? '<div class="acts"><button class="btn btn-o" onclick="wishList()">📝 Als Textdatei</button></div>' : ''}
-  </div>`; })()}
+    </div>
+  </details>`; })()}
   <input id="cq" value="${esc(catQ)}" placeholder="Kraut suchen — Name, botanisch, Familie …" style="margin-bottom:14px">
   <div class="cards2">${list.map(h => `<div class="card" onclick="openHerb('${h.id}')">
     <div class="cname">${esc(h.common)} ${h._stub ? '<span class="itag" style="background:var(--amberbg);color:var(--amber)">Merkposten</span>' : h._draft ? '<span class="itag" style="background:#F2E4CF;color:var(--amber)">Entwurf</span>' : h._imp ? '<span class="itag">importiert</span>' : ''}</div>
@@ -1441,6 +1469,7 @@ function vMono() {
   ${f.topical_only ? '<div class="banner banner-i">Nur äußerlich anwenden — nicht innerlich.</div>' : ''}
   ${h._stub ? `<div class="banner">⚠ MERKPOSTEN — noch keine medizinische Bewertung. Fotos und Fundorte kannst du bereits erfassen; Wirkung, Sicherheit und Verwechslungen fehlen noch. Nicht anwenden.</div>
     ${aiKey && pnProxy ? `<div class="acts"><button class="btn" onclick="aiDraft('${esc(h.latin)}','${esc(h.common)}','${h.id}')"${aiBusy ? ' disabled' : ''}>${aiBusy ? 'Claude schreibt …' : '✨ KI-Entwurf erzeugen'}</button></div>` : ''}` : ''}
+  ${msg ? `<div class="msg ${msg.ok ? 'ok' : 'err'}" style="white-space:pre-wrap">${esc(msg.t)}</div>` : ''}
   ${h._draft ? `<div class="draft">✎ KI-ENTWURF — nicht geprüft. Verifiziere besonders <b>Verwechslungen, Toxin-Grenzen und Kontraindikationen</b> gegen HMPC/ESCOP, bevor du dich darauf verlässt.
     <div class="acts"><button class="btn" onclick="approveDraft('${h.id}')">✓ Geprüft &amp; freigeben</button></div></div>` : ''}
   <div class="tabs">${tabs.map(([k, l]) => `<button class="tab${layer === k ? ' on' : ''}" onclick="setLayer('${k}')">${l}${k === 'notiz' && (u.notes || u.photos.length) ? ' •' : ''}</button>`).join('')}</div>
