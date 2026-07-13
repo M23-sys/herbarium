@@ -208,11 +208,28 @@ background:var(--surface2);color:var(--soft);white-space:nowrap}
 border:1px solid var(--line);background:var(--surface);color:var(--soft);cursor:pointer;width:auto}
 .organ.on{background:var(--green);color:#fff;border-color:var(--green)}
 .key{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px}
+
+.hist{display:flex;align-items:center;gap:11px;padding:10px 0;border-top:1px solid var(--line)}
+.hist:first-child{border-top:none}
+.hist img{width:52px;height:52px;border-radius:9px;object-fit:cover;border:1px solid var(--line);flex-shrink:0;background:var(--surface2)}
+.hist .hi{flex:1;min-width:0}
+.hist .hn{font-weight:600;font-size:14px}
+.hist .hm{font-size:11.5px;color:var(--soft)}
+.hist .hx{background:none;border:none;color:var(--soft);font-size:17px;cursor:pointer;width:auto;padding:2px 5px}
+.wrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.wrow:first-child{border-top:none}
+.wrow .wi{flex:1;min-width:0}
+.wrow .wn{font-weight:600;font-size:14px}
+.wadd{display:flex;gap:7px;margin-top:11px}
+.wadd input{flex:1}
+.wadd button{width:auto;flex-shrink:0}
+.draft{background:#F2E4CF;border:1px solid var(--amber);color:var(--amber);border-radius:11px;padding:13px 15px;
+font-size:13.5px;font-weight:500;margin-bottom:12px}
 @media(min-width:700px){.cards2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cards2 .card{margin-bottom:0}}
 </style>
 </head>
 <body>
-<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v12</div></div></header>
+<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v13</div></div></header>
 <main id="app"></main>
 <div id="modal" class="modal" style="display:none" onclick="closePicker()"></div>
 <nav class="bot">
@@ -848,6 +865,7 @@ async function pnIdentify() {
       score: x.score || 0
     }));
     if (!pnRes.length) pnErr = 'Keine Art erkannt. Anderes Foto probieren.';
+    else await saveHist(pnRes[0]);
   } catch (e) {
     pnErr = (e.message.includes('Failed to fetch') || e.message.includes('NetworkError'))
       ? 'Keine Verbindung. Bist du online?'
@@ -943,6 +961,22 @@ function vId() {
       <p class="soft">Prüfe die Leitmerkmale in der Monographie selbst — besonders bei Arten mit tödlicher Verwechslung. Ein Foto zeigt keinen Geruch, keine matte Blattunterseite, keinen Blattstiel.</p>
       ${pnLeft !== null ? `<p class="lfoot">Heute noch <b>${pnLeft}</b> Bestimmungen frei.</p>` : ''}</div>`;
   }
+  if (idHist.length) {
+    out += `<div class="block" style="margin-top:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 class="btitle" style="margin:0">Historie · ${idHist.length}</h3>
+        <button class="hx" onclick="clearHist()" title="alle löschen">🗑</button></div>
+      <div style="margin-top:10px">
+      ${idHist.map(e => `<div class="hist">
+        <img data-k="h:${e.ts}" alt="">
+        <div class="hi" ${e.herbId ? `onclick="openHerb('${e.herbId}')"` : ''}>
+          <div class="hn">${esc(e.common || e.name)} ${e.danger ? '<span class="flag f-danger">giftig</span>' : ''}</div>
+          <div class="hm">${esc(e.name)} · ${Math.round(e.score * 100)} % · ${new Date(e.ts).toLocaleDateString('de-DE')}</div>
+        </div>
+        <button class="hx" onclick="delHist(${e.ts})">×</button>
+      </div>`).join('')}
+      </div></div>`;
+  }
   out += `<div class="block" style="margin-top:14px"><h3 class="btitle">Zwischenserver</h3>
     <input id="pnp" class="key" placeholder="https://…​.workers.dev" value="${esc(pnProxy)}">
     <div class="acts"><button class="btn btn-o" onclick="savePnProxy()">Speichern</button></div>
@@ -954,7 +988,11 @@ function vId() {
         `<button class="organ${pnProject===k?' on':''}" onclick="pnProject='${k}';LS.set('pnProject','${k}');render()">${l}</button>`).join('')}
     </div>
     <div class="acts"><button class="btn btn-o" onclick="savePnKey()">Schlüssel ändern</button></div>
-    <p class="lfoot" style="border:none">Pl@ntNet empfiehlt <b>Weltweit (all)</b>. „Westeuropa" ist ein Altprojekt und wird abgeschaltet — es war die wahrscheinliche Ursache des 403-Fehlers.</p></div>`;
+    <p class="lfoot" style="border:none">Pl@ntNet empfiehlt <b>Weltweit (all)</b>. „Westeuropa" ist ein Altprojekt.</p></div>
+  <div class="block"><h3 class="btitle">Claude-Schlüssel (für Monographie-Entwürfe)</h3>
+    <input id="aik" class="key" placeholder="sk-ant-…" value="${esc(aiKey)}">
+    <div class="acts"><button class="btn btn-o" onclick="saveAiKey()">Speichern</button></div>
+    <p class="lfoot" style="border:none">${aiKey ? 'Aktiv — im Katalog kannst du für Merkposten Entwürfe erzeugen.' : 'Optional. Erzeugt <b>Entwürfe</b>, die du selbst prüfen und freigeben musst.'} Läuft über denselben Zwischenserver. Schlüssel bleibt auf dem Gerät.</p></div>`;
   return out;
 }
 
@@ -1002,6 +1040,186 @@ function wishList() {
   render();
 }
 
+
+/* ================= 1) HISTORIE DER BILDERKENNUNG ================= */
+let idHist = LS.get('idhist', []);   // [{ts, name, common, score, herbId, danger}]
+
+async function saveHist(top) {
+  const ts = Date.now();
+  const m = matchCatalog(top.name);
+  const entry = {
+    ts, name: top.name, common: top.common || '', score: top.score,
+    herbId: m && m.type === 'herb' ? m.herb.id : (m && m.type === 'conf' ? m.herb.id : null),
+    danger: !!(m && m.type === 'conf' && /giftig|lebensge/.test(m.conf.t || ''))
+  };
+  idHist.unshift(entry);
+  idHist = idHist.slice(0, 60);
+  LS.set('idhist', idHist);
+  if (pnPhoto && pnPhoto.blob) { try { await IDB.set('h:' + ts, pnPhoto.blob); } catch (e) {} }
+}
+async function delHist(ts) {
+  const e = idHist.find(x => x.ts === ts);
+  if (!confirm('Eintrag löschen?\n\n' + (e ? (e.common || e.name) : '') + '\n' +
+      (e ? new Date(e.ts).toLocaleString('de-DE') : ''))) return;
+  idHist = idHist.filter(x => x.ts !== ts);
+  LS.set('idhist', idHist);
+  await IDB.del('h:' + ts);
+  if (objURL.has('h:' + ts)) { URL.revokeObjectURL(objURL.get('h:' + ts)); objURL.delete('h:' + ts); }
+  render();
+}
+function clearHist() {
+  if (!confirm('Gesamte Bestimmungs-Historie löschen? (' + idHist.length + ' Einträge)')) return;
+  idHist.forEach(e => IDB.del('h:' + e.ts));
+  idHist = []; LS.set('idhist', idHist);
+  msg = { ok: 1, t: 'Historie gelöscht.' };
+  render();
+}
+
+/* ================= 2) WUNSCHLISTE ================= */
+let wish = LS.get('wish', []);   // [{id, latin, common}]
+
+function addWish(latin, common) {
+  const la = (latin || '').trim(); if (!la) return;
+  const id = slugify(la) || la.toLowerCase();
+  if (wish.some(w => w.id === id)) { msg = { ok: 0, t: 'Steht schon auf der Liste.' }; render(); return; }
+  wish.push({ id, latin: la, common: (common || '').trim() });
+  LS.set('wish', wish);
+  msg = { ok: 1, t: '„' + (common || la) + '" zur Wunschliste hinzugefügt.' };
+  render();
+}
+function addWishManual() {
+  const a = document.getElementById('wla'), b = document.getElementById('wco');
+  if (!a) return;
+  addWish(a.value, b ? b.value : '');
+}
+function delWish(id) {
+  const w = wish.find(x => x.id === id);
+  if (!confirm('Von der Wunschliste entfernen?\n\n' + (w ? (w.common || w.latin) : ''))) return;
+  wish = wish.filter(x => x.id !== id);
+  LS.set('wish', wish);
+  render();
+}
+function wishList() {
+  const stubs = herbs.filter(h => h._stub);
+  const all = [...stubs.map(h => ({ id: h.id, latin: h.latin, common: h.common, src: 'Merkposten' })),
+               ...wish.map(w => ({ ...w, src: 'manuell' }))];
+  if (!all.length) { msg = { ok: 0, t: 'Wunschliste ist leer.' }; render(); return; }
+  const txt = 'Monographien gewünscht für:\n\n'
+    + all.map(x => '- ' + (x.common || x.latin) + ' (' + x.latin + ')  [id: ' + x.id + ']  · ' + x.src).join('\n')
+    + '\n\nBitte im gleichen JSON-Schema wie die bestehenden Monographien, mit identischer id,\n'
+    + 'inkl. Verwechslungspartner mit Giftigkeit, Evidenz-Tags pro Indikation und Quellenangaben.';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+  a.download = 'wunschliste.txt'; a.click();
+  msg = { ok: 1, t: all.length + ' Einträge exportiert (wunschliste.txt).' };
+  render();
+}
+
+/* ================= 3) EINTRÄGE LÖSCHEN ================= */
+async function delHerb(id) {
+  const h = herbs.find(x => x.id === id);
+  if (!h) return;
+  const nFinds = finds.filter(f => f.herb === id).length;
+  if (!confirm('Eintrag löschen?\n\n' + h.common + ' (' + h.latin + ')\n\n' +
+      'Dabei werden auch gelöscht:\n· ' + nFinds + ' Fundort(e)\n· zugehörige Bilder und Notizen\n\n' +
+      'Das lässt sich nicht rückgängig machen.')) return;
+  herbs = herbs.filter(x => x.id !== id);
+  LS.set('imported', LS.get('imported', []).filter(x => x.id !== id));
+  finds = finds.filter(f => f.herb !== id); saveFinds();
+  delete user[id]; LS.set('user', user);
+  for (const k of await IDB.keys()) if (String(k).startsWith(id + ':')) await IDB.del(k);
+  sel = null; view = 'cat';
+  msg = { ok: 1, t: '„' + h.common + '" gelöscht.' };
+  render();
+}
+
+/* ================= 4) KI-ENTWURF (Claude) ================= */
+let aiKey = LS.get('aiKey', '');
+let aiBusy = false;
+
+function saveAiKey() {
+  const i = document.getElementById('aik'); if (!i) return;
+  aiKey = i.value.trim().replace(/^["'\s]+|["'\s]+$/g, '');
+  LS.set('aiKey', aiKey);
+  msg = { ok: 1, t: aiKey ? 'Claude-Schlüssel gespeichert (nur auf diesem Gerät).' : 'Schlüssel entfernt.' };
+  render();
+}
+
+const AI_PROMPT = (latin, common, id) => `Erstelle eine Heilpflanzen-Monographie als reines JSON (keine Erklärung, kein Markdown, kein Codeblock).
+
+Pflanze: ${common || latin} (${latin})
+id: "${id}"
+
+WICHTIGE REGELN:
+- Sei streng bei der Evidenz. evidence_tag nur aus: WEU, TU, ESCOP+, RCT, PRÄ, TRAD (Kombination mit / erlaubt).
+- WEU nur, wenn wirklich HMPC "well-established use" vorliegt. Im Zweifel TU oder TRAD.
+- Erfinde NICHTS. Wenn du etwas nicht sicher weißt, schreibe "unsicher — zu prüfen" statt einer Behauptung.
+- confusions: ALLE relevanten Verwechslungspartner, besonders giftige. toxicity_level: "essbar", "giftig" oder "lebensgefährlich".
+- Nenne bei jeder Indikation eine Quelle (HMPC/ESCOP/Kommission E/Studie).
+
+JSON-Struktur (exakt diese Felder):
+{"schema_version":"1.0","id":"${id}",
+"botany":{"scientific_name":"","common_names_de":[],"family":"","drug_part":[],"drug_name_latin":""},
+"identification":{"key_features":[],"season":"","habitat":"","region_occurrence":[{"region":"","status":""}],"collection_rules":[]},
+"confusions":[{"name":"","scientific_name":"","toxicity_level":"","toxin":"","note":""}],
+"chemistry":{"main_groups":[],"lead_substance":"","solubility_note":"","heat_light_sensitivity":""},
+"pharmacology":{"mechanism":"","evidence_caveat":"","pharmacokinetics":""},
+"indications":[{"canonical":"","synonyms":[],"evidence_tag":"","comment":"","realistic_expectation":"","source":""}],
+"expectation_summary":{"plausible":"","overstated":"","effect_size":""},
+"preparation":{"recommended_forms":[],"form_rationale":"","standard_dose":"","preservation":""},
+"safety":{"tox_ceiling":"","contraindications":[],"pregnancy_lactation":"","adverse_effects":"","interactions":[{"type":"","mechanism":"","clinical_relevance":""}],"flags":{"deadly_confusion":false,"pregnancy_contraindicated":false,"interaction_heavy":false,"toxin_ceiling":false,"asteraceae_allergy":false,"topical_only":false,"high_safety":false},"key_warning":""},
+"harvest_processing_storage":{"harvest_time":"","harvest_month_tags":[],"harvest_organ":"","method":"","processing":"","storage":""},
+"kitchen":{"uses":[],"culinary_vs_medicinal":""},
+"garden":{"site_soil":"","hardiness":"","propagation":"","bodensee_suitability":""},
+"sources":[]}
+
+Antworte NUR mit dem JSON-Objekt.`;
+
+async function aiDraft(latin, common, id) {
+  if (!aiKey) { msg = { ok: 0, t: 'Kein Claude-Schlüssel hinterlegt (Reiter Bestimmen → ganz unten).' }; render(); return; }
+  if (!pnProxy) { msg = { ok: 0, t: 'Kein Zwischenserver hinterlegt — wird auch für Claude gebraucht.' }; render(); return; }
+  aiBusy = true; msg = { ok: 1, t: 'Claude schreibt einen Entwurf für „' + (common || latin) + '" …' }; render();
+  try {
+    const r = await fetch(pnProxy.replace(/\/+$/, '') + '/claude', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': aiKey },
+      body: JSON.stringify({
+        model: 'claude-sonnet-5',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: AI_PROMPT(latin, common, id) }]
+      })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j && j.error && j.error.message ? j.error.message : 'HTTP ' + r.status);
+    let txt = (j.content || []).map(c => c.text || '').join('').trim();
+    txt = txt.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    const obj = JSON.parse(txt);
+    const h = normalize(obj);
+    if (!h) throw new Error('Antwort passte nicht ins Schema.');
+    h._draft = 1; h._stub = 0;
+    const i = herbs.findIndex(x => x.id === h.id);
+    if (i >= 0) herbs[i] = h; else herbs.push(h);
+    const imp = LS.get('imported', []).filter(x => x.id !== h.id);
+    imp.push(h); LS.set('imported', imp);
+    wish = wish.filter(w => w.id !== h.id); LS.set('wish', wish);
+    msg = { ok: 1, t: 'ENTWURF erstellt — bitte prüfen und freigeben.' };
+    sel = h; layer = 'mono'; view = 'cat';
+  } catch (e) {
+    msg = { ok: 0, t: 'Entwurf fehlgeschlagen: ' + e.message };
+  }
+  aiBusy = false; render();
+}
+
+function approveDraft(id) {
+  const h = herbs.find(x => x.id === id); if (!h) return;
+  if (!confirm('Entwurf freigeben?\n\nDamit bestätigst du, dass du die Angaben geprüft hast —\ninsbesondere Verwechslungen, Toxine und Kontraindikationen.')) return;
+  h._draft = 0;
+  const imp = LS.get('imported', []).map(x => x.id === id ? h : x);
+  LS.set('imported', imp);
+  msg = { ok: 1, t: 'Freigegeben.' };
+  render();
+}
+
 /* ---------- Router ---------- */
 let view = 'search', sel = null, layer = 'feld', reg = 'verw', calM = new Date().getMonth() + 1, q = '', catQ = '', msg = null;
 const app = document.getElementById('app');
@@ -1010,7 +1228,7 @@ document.querySelectorAll('nav.bot button').forEach(b =>
 
 function nav() {
   document.querySelectorAll('nav.bot button').forEach(b => b.classList.toggle('on', b.dataset.v === view && !sel));
-  document.getElementById("sub").textContent = herbs.length + " Kräuter · v12";
+  document.getElementById("sub").textContent = herbs.length + " Kräuter · v13";
 }
 function openHerb(id) { sel = herbs.find(h => h.id === id); layer = 'feld'; render(); window.scrollTo(0, 0); }
 
@@ -1112,15 +1330,34 @@ function vCat() {
     <button class="btn btn-o" onclick="bulkLoad()">🖼 Alle Bilder laden</button>
     <button class="btn btn-o" onclick="clearImgs()">Bilder löschen</button>
     <button class="btn btn-o" onclick="wikiDiag()">🔧 Bilder-Diagnose</button>
-    <button class="btn btn-o" onclick="wishList()">📝 Wunschliste</button>
   </div>
   ${bulk ? `<div class="msg ok">Lade Bilder von Wikimedia … ${bulk.done}/${bulk.total}
     <div class="bar"><div style="width:${Math.round(bulk.done / bulk.total * 100)}%"></div></div>
     <span class="soft" style="font-size:12px">Einmalig im WLAN — danach offline verfügbar.</span></div>` : ''}
   ${msg ? `<div class="msg ${msg.ok ? 'ok' : 'err'}">${esc(msg.t)}</div>` : ''}
+  ${(() => { const stubs = herbs.filter(h => h._stub); const all = stubs.length + wish.length; return `
+  <div class="block"><h3 class="btitle">Wunschliste · ${all}</h3>
+    ${!all ? '<p class="soft" style="font-size:13px">Leer. Merkposten aus der Bestimmung landen automatisch hier.</p>' : ''}
+    ${stubs.map(h => `<div class="wrow">
+      <div class="wi" onclick="openHerb('${h.id}')"><div class="wn">${esc(h.common)}</div>
+        <div class="latin">${esc(h.latin)} · Merkposten</div></div>
+      ${aiKey && pnProxy ? `<button class="btn btn-o" style="padding:7px 10px;font-size:11px" onclick="event.stopPropagation();aiDraft('${esc(h.latin)}','${esc(h.common)}','${h.id}')">✨ Entwurf</button>` : ''}
+      <button class="hx" onclick="delHerb('${h.id}')">×</button></div>`).join('')}
+    ${wish.map(w => `<div class="wrow">
+      <div class="wi"><div class="wn">${esc(w.common || w.latin)}</div>
+        <div class="latin">${esc(w.latin)} · manuell</div></div>
+      ${aiKey && pnProxy ? `<button class="btn btn-o" style="padding:7px 10px;font-size:11px" onclick="aiDraft('${esc(w.latin)}','${esc(w.common)}','${w.id}')">✨ Entwurf</button>` : ''}
+      <button class="hx" onclick="delWish('${w.id}')">×</button></div>`).join('')}
+    <div class="wadd">
+      <input id="wla" placeholder="Botanischer Name …">
+      <input id="wco" placeholder="deutsch" style="max-width:110px">
+      <button class="btn" onclick="addWishManual()">＋</button>
+    </div>
+    ${all ? '<div class="acts"><button class="btn btn-o" onclick="wishList()">📝 Als Textdatei</button></div>' : ''}
+  </div>`; })()}
   <input id="cq" value="${esc(catQ)}" placeholder="Kraut suchen — Name, botanisch, Familie …" style="margin-bottom:14px">
   <div class="cards2">${list.map(h => `<div class="card" onclick="openHerb('${h.id}')">
-    <div class="cname">${esc(h.common)} ${h._stub ? '<span class="itag" style="background:var(--amberbg);color:var(--amber)">Merkposten</span>' : h._imp ? '<span class="itag">importiert</span>' : ''}</div>
+    <div class="cname">${esc(h.common)} ${h._stub ? '<span class="itag" style="background:var(--amberbg);color:var(--amber)">Merkposten</span>' : h._draft ? '<span class="itag" style="background:#F2E4CF;color:var(--amber)">Entwurf</span>' : h._imp ? '<span class="itag">importiert</span>' : ''}</div>
     <div class="latin">${esc(h.latin)}</div><p class="cexp">${esc(h.family)}</p>${flagsHTML(h)}</div>`).join('')}</div>
   ${!list.length ? '<div class="empty">Kein Treffer.</div>' : ''}`;
 }
@@ -1202,9 +1439,14 @@ function vMono() {
   <h1>${esc(h.common)}</h1><p class="latin" style="font-size:14px;margin:0 0 12px">${esc(h.latin)}</p>
   ${f.deadly_confusion ? '<div class="banner">⚠ Sicherheitskritisch: tödliche Verwechslung möglich. Bestimmung hat Vorrang vor jeder Verwendung.</div>' : ''}
   ${f.topical_only ? '<div class="banner banner-i">Nur äußerlich anwenden — nicht innerlich.</div>' : ''}
-  ${h._stub ? '<div class="banner">⚠ MERKPOSTEN — noch keine medizinische Bewertung. Fotos und Fundorte kannst du bereits erfassen; Wirkung, Sicherheit und Verwechslungen fehlen noch. Nicht anwenden.</div>' : ''}
+  ${h._stub ? `<div class="banner">⚠ MERKPOSTEN — noch keine medizinische Bewertung. Fotos und Fundorte kannst du bereits erfassen; Wirkung, Sicherheit und Verwechslungen fehlen noch. Nicht anwenden.</div>
+    ${aiKey && pnProxy ? `<div class="acts"><button class="btn" onclick="aiDraft('${esc(h.latin)}','${esc(h.common)}','${h.id}')"${aiBusy ? ' disabled' : ''}>${aiBusy ? 'Claude schreibt …' : '✨ KI-Entwurf erzeugen'}</button></div>` : ''}` : ''}
+  ${h._draft ? `<div class="draft">✎ KI-ENTWURF — nicht geprüft. Verifiziere besonders <b>Verwechslungen, Toxin-Grenzen und Kontraindikationen</b> gegen HMPC/ESCOP, bevor du dich darauf verlässt.
+    <div class="acts"><button class="btn" onclick="approveDraft('${h.id}')">✓ Geprüft &amp; freigeben</button></div></div>` : ''}
   <div class="tabs">${tabs.map(([k, l]) => `<button class="tab${layer === k ? ' on' : ''}" onclick="setLayer('${k}')">${l}${k === 'notiz' && (u.notes || u.photos.length) ? ' •' : ''}</button>`).join('')}</div>
-  ${body}`;
+  ${body}
+  ${(h._imp || h._stub || h._draft) ? `<div class="acts" style="margin-top:16px">
+    <button class="btn btn-o" onclick="delHerb('${h.id}')">🗑 Eintrag löschen</button></div>` : ''}`;
 }
 
 /* ---------- Aktionen ---------- */
