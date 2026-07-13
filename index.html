@@ -212,7 +212,7 @@ border:1px solid var(--line);background:var(--surface);color:var(--soft);cursor:
 </style>
 </head>
 <body>
-<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v8</div></div></header>
+<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v10</div></div></header>
 <main id="app"></main>
 <div id="modal" class="modal" style="display:none" onclick="closePicker()"></div>
 <nav class="bot">
@@ -751,11 +751,15 @@ let pnPhoto = null;      // {dataUrl, blob}
 let pnBusy = false;
 let pnRes = null;        // [{name, common, score}]
 let pnErr = null;
+let pnLeft = null;      // verbleibende Anfragen heute
 
 function savePnKey() {
   const i = document.getElementById('pnk');
   if (!i) return;
-  pnKey = i.value.trim();
+  pnKey = i.value.trim()
+    .replace(/^["'\s]+|["'\s]+$/g, '')     // Anführungszeichen/Leerzeichen weg
+    .replace(/^api[-_]?key\s*[=:]\s*/i, '') // versehentlich "api-key=" mitkopiert
+    .trim();
   LS.set('pnKey', pnKey);
   msg = { ok: 1, t: pnKey ? 'Schlüssel gespeichert — er bleibt nur auf diesem Gerät.' : 'Schlüssel entfernt.' };
   render();
@@ -777,31 +781,58 @@ function pnPick(e) {
 }
 
 /* Anfrage an Pl@ntNet — der Schlüssel liegt NUR auf dem Gerät, nie auf GitHub */
+let pnProject = LS.get('pnProject', 'all');
+
+async function pnCall(project) {
+  const fd = new FormData();
+  fd.append('images', pnPhoto.blob, 'photo.jpg');
+  fd.append('organs', pnOrgan);
+  const url = 'https://my-api.plantnet.org/v2/identify/' + project
+            + '?api-key=' + encodeURIComponent(pnKey)
+            + '&include-related-images=false&nb-results=5';
+  const r = await fetch(url, { method: 'POST', body: fd });
+  let body = null;
+  try { body = await r.json(); } catch (e) { /* kein JSON */ }
+  return { r, body };
+}
+
 async function pnIdentify() {
   if (!pnKey) { pnErr = 'Kein API-Schlüssel hinterlegt.'; render(); return; }
   if (!pnPhoto) { pnErr = 'Kein Foto ausgewählt.'; render(); return; }
   pnBusy = true; pnErr = null; pnRes = null; render();
+
   try {
-    const fd = new FormData();
-    fd.append('images', pnPhoto.blob, 'photo.jpg');
-    fd.append('organs', pnOrgan);
-    const url = 'https://my-api.plantnet.org/v2/identify/weurope?api-key=' + encodeURIComponent(pnKey)
-              + '&include-related-images=false&nb-results=5&lang=de';
-    const r = await fetch(url, { method: 'POST', body: fd });
-    if (r.status === 401 || r.status === 403) throw new Error('Schlüssel ungültig oder abgelehnt (HTTP ' + r.status + ').');
-    if (r.status === 429) throw new Error('Tageslimit erreicht (500 Anfragen).');
-    if (r.status === 404) throw new Error('Keine Art erkannt — anderes Foto oder anderes Organ probieren.');
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    pnRes = (j.results || []).slice(0, 5).map(x => ({
+    let { r, body } = await pnCall(pnProject);
+
+    // 403/404 beim Spezialprojekt? -> automatisch mit "all" erneut versuchen
+    if ((r.status === 403 || r.status === 404) && pnProject !== 'all') {
+      const retry = await pnCall('all');
+      if (retry.r.ok) { pnProject = 'all'; LS.set('pnProject', 'all'); r = retry.r; body = retry.body; }
+    }
+
+    if (!r.ok) {
+      // Pl@ntNets EIGENE Begründung anzeigen — die sagt uns, was wirklich los ist
+      const server = body && (body.message || body.error) ? String(body.message || body.error) : '';
+      if (r.status === 401) throw new Error('Schlüssel abgelehnt (401). Stimmt der Schlüssel? ' + server);
+      if (r.status === 403) throw new Error('Zugriff verweigert (403). Server sagt: "' + (server || 'keine Begründung') +
+        '"\n\nHäufigste Gründe: Schlüssel noch nicht aktiviert (E-Mail-Bestätigung von Pl@ntNet?), Schlüssel falsch kopiert, oder Projekt nicht freigeschaltet.');
+      if (r.status === 404) throw new Error('Keine Art erkannt (404). Anderes Foto oder anderes Organ probieren.');
+      if (r.status === 413) throw new Error('Foto zu groß (413).');
+      if (r.status === 429) throw new Error('Tageslimit erreicht (429) — 500 Anfragen pro Tag.');
+      throw new Error('HTTP ' + r.status + (server ? ' — ' + server : ''));
+    }
+
+    pnLeft = (body && typeof body.remainingIdentificationRequests === 'number')
+      ? body.remainingIdentificationRequests : null;
+    pnRes = ((body && body.results) || []).slice(0, 5).map(x => ({
       name: x.species && x.species.scientificNameWithoutAuthor ? x.species.scientificNameWithoutAuthor : '?',
       common: x.species && x.species.commonNames && x.species.commonNames.length ? x.species.commonNames[0] : '',
       score: x.score || 0
     }));
     if (!pnRes.length) pnErr = 'Keine Art erkannt. Anderes Foto probieren.';
   } catch (e) {
-    pnErr = e.message.includes('Failed to fetch') || e.message.includes('NetworkError')
-      ? 'Verbindung blockiert. Entweder kein Internet — oder Pl@ntNet erlaubt keine direkten Browser-Anfragen (CORS). Dann bräuchte es einen kleinen Zwischenserver.'
+    pnErr = (e.message.includes('Failed to fetch') || e.message.includes('NetworkError'))
+      ? 'Keine Verbindung. Bist du online?'
       : e.message;
   }
   pnBusy = false; render();
@@ -856,7 +887,7 @@ function vId() {
     </div>`;
   }
   if (pnBusy) out += `<div class="spin">Pl@ntNet vergleicht das Foto …</div>`;
-  if (pnErr) out += `<div class="msg err">${esc(pnErr)}</div>`;
+  if (pnErr) out += `<div class="msg err" style="white-space:pre-wrap">${esc(pnErr)}</div>`;
 
   if (pnRes && pnRes.length) {
     out += `<p class="eyebrow" style="margin-top:18px">Vorschläge — nach Wahrscheinlichkeit</p>`;
@@ -882,11 +913,17 @@ function vId() {
     }).join('');
     out += `<div class="block" style="margin-top:14px"><h3 class="btitle">Wichtig</h3>
       <p style="color:var(--amber);font-weight:500">Die KI liefert einen Vorschlag, keinen Beweis.</p>
-      <p class="soft">Prüfe die Leitmerkmale in der Monographie selbst — besonders bei Arten mit tödlicher Verwechslung. Ein Foto zeigt keinen Geruch, keine matte Blattunterseite, keinen Blattstiel.</p></div>`;
+      <p class="soft">Prüfe die Leitmerkmale in der Monographie selbst — besonders bei Arten mit tödlicher Verwechslung. Ein Foto zeigt keinen Geruch, keine matte Blattunterseite, keinen Blattstiel.</p>
+      ${pnLeft !== null ? `<p class="lfoot">Heute noch <b>${pnLeft}</b> Bestimmungen frei.</p>` : ''}</div>`;
   }
-  out += `<div class="block" style="margin-top:14px"><h3 class="btitle">Schlüssel</h3>
+  out += `<div class="block" style="margin-top:14px"><h3 class="btitle">Schlüssel & Projekt</h3>
     <input id="pnk" class="key" value="${esc(pnKey)}">
-    <div class="acts"><button class="btn btn-o" onclick="savePnKey()">Ändern</button></div></div>`;
+    <div class="organs" style="margin-top:10px">
+      ${[['all','Weltweit (empfohlen)'],['k-world-flora','World Flora'],['weurope','Westeuropa (alt)']].map(([k,l]) =>
+        `<button class="organ${pnProject===k?' on':''}" onclick="pnProject='${k}';LS.set('pnProject','${k}');render()">${l}</button>`).join('')}
+    </div>
+    <div class="acts"><button class="btn btn-o" onclick="savePnKey()">Schlüssel ändern</button></div>
+    <p class="lfoot" style="border:none">Pl@ntNet empfiehlt <b>Weltweit (all)</b>. „Westeuropa" ist ein Altprojekt und wird abgeschaltet — es war die wahrscheinliche Ursache des 403-Fehlers.</p></div>`;
   return out;
 }
 
@@ -898,7 +935,7 @@ document.querySelectorAll('nav.bot button').forEach(b =>
 
 function nav() {
   document.querySelectorAll('nav.bot button').forEach(b => b.classList.toggle('on', b.dataset.v === view && !sel));
-  document.getElementById("sub").textContent = herbs.length + " Kräuter · v8";
+  document.getElementById("sub").textContent = herbs.length + " Kräuter · v10";
 }
 function openHerb(id) { sel = herbs.find(h => h.id === id); layer = 'feld'; render(); window.scrollTo(0, 0); }
 
