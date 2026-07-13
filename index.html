@@ -212,7 +212,7 @@ border:1px solid var(--line);background:var(--surface);color:var(--soft);cursor:
 </style>
 </head>
 <body>
-<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v11</div></div></header>
+<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v12</div></div></header>
 <main id="app"></main>
 <div id="modal" class="modal" style="display:none" onclick="closePicker()"></div>
 <nav class="bot">
@@ -859,14 +859,16 @@ async function pnIdentify() {
 /* Abgleich mit dem Katalog: eigene Art ODER giftiger Doppelgänger? */
 const norm = s => String(s || '').toLowerCase().replace(/\s*\(.*?\)\s*/g, ' ')
   .replace(/\s+(l\.|spp?\.|×|syn\.)\s*/gi, ' ').replace(/\s+/g, ' ').trim();
+/* Nur Gattung + Art vergleichen — Autorenkürzel ("L.", "Spenn.") und
+   Synonyme mit Zusatz stören sonst den Abgleich. */
+const sp = s => norm(s).split(' ').slice(0, 2).join(' ');
 function matchCatalog(latin) {
-  const n = norm(latin);
-  const herb = herbs.find(h => norm(h.latin) === n || norm(h.latin).startsWith(n) || n.startsWith(norm(h.latin)));
+  const n = sp(latin);
+  if (!n) return null;
+  const herb = herbs.find(h => sp(h.latin) === n);
   if (herb) return { type: 'herb', herb };
   for (const h of herbs) for (const c of (h.conf || [])) {
-    if (!c.l) continue;
-    const cn = norm(c.l);
-    if (cn === n || cn.startsWith(n) || n.startsWith(cn)) return { type: 'conf', herb: h, conf: c };
+    if (c.l && sp(c.l) === n) return { type: 'conf', herb: h, conf: c };
   }
   return null;
 }
@@ -929,7 +931,8 @@ function vId() {
         extra = `<div class="acts"><button class="btn" onclick="openHerb('${m.herb.id}')">Monographie öffnen</button>
         <button class="btn btn-o" onclick="logFind('${m.herb.id}')">📍 Hier gefunden</button></div>`;
       } else {
-        extra = `<p class="cexp">Nicht in deiner Sammlung. Wenn du diese Art aufnehmen willst, lässt sich eine Monographie ergänzen.</p>`;
+        extra = `<p class="cexp">Noch nicht in deiner Sammlung.</p>
+        <div class="acts"><button class="btn btn-o" onclick="addStub('${esc(r.name)}','${esc(r.common || r.name)}')">＋ Als Merkposten aufnehmen</button></div>`;
       }
       return `<div class="${cls}">
         <div class="rt"><div><div class="rn">${esc(r.common || r.name)}</div><div class="latin">${esc(r.name)}</div></div>
@@ -955,6 +958,50 @@ function vId() {
   return out;
 }
 
+
+/* --- Merkposten: unvollständiger Eintrag aus einem Pl@ntNet-Treffer --- */
+function slugify(latin) {
+  return norm(latin).split(' ').slice(0, 2).join('-').replace(/[^a-z0-9-]/g, '');
+}
+function addStub(latin, common) {
+  const id = slugify(latin);
+  if (!id) return;
+  if (herbs.some(h => h.id === id)) { msg = { ok: 1, t: 'Ist bereits in der Sammlung.' }; render(); return; }
+  const stub = {
+    id, common: common || latin, latin, family: '', part: [],
+    feat: ['⚠ Merkposten — Leitmerkmale noch nicht erfasst.'],
+    season: '', habitat: '', conf: [],
+    chem: { g: [], lead: '', sol: '' },
+    ind: [], expect: { ok: '', no: '' },
+    prep: { f: [], why: '', dose: '' },
+    safe: { ceil: '', ci: [], preg: '', int: [], flags: {}, warn:
+      'MERKPOSTEN — noch keine medizinische Bewertung. Nicht anwenden, bevor eine vollständige Monographie vorliegt.' },
+    harv: { t: '', m: [], o: '', st: '' },
+    gard: { site: '', hard: '', prop: '', bs: '' },
+    _stub: 1, _imp: 1, _added: Date.now()
+  };
+  herbs.push(stub);
+  const imported = LS.get('imported', []);
+  imported.push(stub);
+  LS.set('imported', imported);
+  msg = { ok: 1, t: '„' + (common || latin) + '" als Merkposten angelegt. Fotos und Fundorte kannst du jetzt schon erfassen.' };
+  render();
+}
+
+/* Wunschliste: alle Merkposten als Text zum Weitergeben */
+function wishList() {
+  const stubs = herbs.filter(h => h._stub);
+  if (!stubs.length) { msg = { ok: 0, t: 'Keine Merkposten vorhanden.' }; render(); return; }
+  const txt = 'Monographien gewünscht für:\n\n' + stubs.map(h =>
+    '- ' + h.common + ' (' + h.latin + ')  [id: ' + h.id + ']').join('\n') +
+    '\n\nBitte im gleichen JSON-Schema wie die bestehenden Monographien, mit identischer id.';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+  a.download = 'wunschliste.txt'; a.click();
+  msg = { ok: 1, t: stubs.length + ' Merkposten exportiert (wunschliste.txt).' };
+  render();
+}
+
 /* ---------- Router ---------- */
 let view = 'search', sel = null, layer = 'feld', reg = 'verw', calM = new Date().getMonth() + 1, q = '', catQ = '', msg = null;
 const app = document.getElementById('app');
@@ -963,7 +1010,7 @@ document.querySelectorAll('nav.bot button').forEach(b =>
 
 function nav() {
   document.querySelectorAll('nav.bot button').forEach(b => b.classList.toggle('on', b.dataset.v === view && !sel));
-  document.getElementById("sub").textContent = herbs.length + " Kräuter · v11";
+  document.getElementById("sub").textContent = herbs.length + " Kräuter · v12";
 }
 function openHerb(id) { sel = herbs.find(h => h.id === id); layer = 'feld'; render(); window.scrollTo(0, 0); }
 
@@ -1065,6 +1112,7 @@ function vCat() {
     <button class="btn btn-o" onclick="bulkLoad()">🖼 Alle Bilder laden</button>
     <button class="btn btn-o" onclick="clearImgs()">Bilder löschen</button>
     <button class="btn btn-o" onclick="wikiDiag()">🔧 Bilder-Diagnose</button>
+    <button class="btn btn-o" onclick="wishList()">📝 Wunschliste</button>
   </div>
   ${bulk ? `<div class="msg ok">Lade Bilder von Wikimedia … ${bulk.done}/${bulk.total}
     <div class="bar"><div style="width:${Math.round(bulk.done / bulk.total * 100)}%"></div></div>
@@ -1072,7 +1120,7 @@ function vCat() {
   ${msg ? `<div class="msg ${msg.ok ? 'ok' : 'err'}">${esc(msg.t)}</div>` : ''}
   <input id="cq" value="${esc(catQ)}" placeholder="Kraut suchen — Name, botanisch, Familie …" style="margin-bottom:14px">
   <div class="cards2">${list.map(h => `<div class="card" onclick="openHerb('${h.id}')">
-    <div class="cname">${esc(h.common)} ${h._imp ? '<span class="itag">importiert</span>' : ''}</div>
+    <div class="cname">${esc(h.common)} ${h._stub ? '<span class="itag" style="background:var(--amberbg);color:var(--amber)">Merkposten</span>' : h._imp ? '<span class="itag">importiert</span>' : ''}</div>
     <div class="latin">${esc(h.latin)}</div><p class="cexp">${esc(h.family)}</p>${flagsHTML(h)}</div>`).join('')}</div>
   ${!list.length ? '<div class="empty">Kein Treffer.</div>' : ''}`;
 }
@@ -1154,6 +1202,7 @@ function vMono() {
   <h1>${esc(h.common)}</h1><p class="latin" style="font-size:14px;margin:0 0 12px">${esc(h.latin)}</p>
   ${f.deadly_confusion ? '<div class="banner">⚠ Sicherheitskritisch: tödliche Verwechslung möglich. Bestimmung hat Vorrang vor jeder Verwendung.</div>' : ''}
   ${f.topical_only ? '<div class="banner banner-i">Nur äußerlich anwenden — nicht innerlich.</div>' : ''}
+  ${h._stub ? '<div class="banner">⚠ MERKPOSTEN — noch keine medizinische Bewertung. Fotos und Fundorte kannst du bereits erfassen; Wirkung, Sicherheit und Verwechslungen fehlen noch. Nicht anwenden.</div>' : ''}
   <div class="tabs">${tabs.map(([k, l]) => `<button class="tab${layer === k ? ' on' : ''}" onclick="setLayer('${k}')">${l}${k === 'notiz' && (u.notes || u.photos.length) ? ' •' : ''}</button>`).join('')}</div>
   ${body}`;
 }
