@@ -268,11 +268,25 @@ width:42px;height:42px;border-radius:50%;font-size:20px;cursor:pointer;padding:0
 .cmp>div{flex:1;text-align:center}
 .cmp img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:var(--surface2)}
 .cmp .cl{font-size:10.5px;color:var(--soft);margin-top:4px;font-family:'IBM Plex Mono',ui-monospace,monospace}
+
+.poison{background:var(--danger);color:#fff;border-radius:12px;padding:14px 16px;font-size:14px;font-weight:600;
+margin-bottom:12px;line-height:1.4}
+.poison small{display:block;font-weight:400;opacity:.9;margin-top:5px;font-size:12.5px}
+.org-auto{background:#DCE8E4;color:#2E5A44}
+.org-poison{background:var(--danger);color:#fff}
+.chk{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-top:1px solid var(--line);cursor:pointer}
+.chk:first-child{border-top:none}
+.chk input{width:18px;height:18px;margin:2px 0 0;flex-shrink:0}
+.chk .ct{flex:1;font-size:13.5px}
+.chk .ct b{display:block;font-size:13.5px}
+.chk .ct span{color:var(--soft);font-size:12.5px}
+.ghrow{display:flex;gap:7px;margin-bottom:8px}
+.ghrow input{flex:1}
 @media(min-width:700px){.cards2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cards2 .card{margin-bottom:0}}
 </style>
 </head>
 <body>
-<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v16</div></div></header>
+<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v17</div></div></header>
 <main id="app"></main>
 <div id="modal" class="modal" style="display:none" onclick="closePicker()"></div>
 <div id="lbwrap"></div>
@@ -991,10 +1005,16 @@ function vId() {
     out += pnRes.map(r => {
       const m = matchCatalog(r.name);
       const pct = Math.round(r.score * 100);
-      const danger = m && m.type === 'conf' && (m.conf.t || '').match(/giftig|lebensge/);
+      // Eigener Katalog-Eintrag, aber GIFTPFLANZE (Warneintrag) -> niemals als Treffer behandeln
+      const poison = m && m.type === 'herb' && isPoison(m.herb);
+      const danger = poison || (m && m.type === 'conf' && (m.conf.t || '').match(/giftig|lebensge/));
       let cls = danger ? 'res danger' : m && m.type === 'herb' ? 'res match' : 'res';
       let extra = '';
-      if (danger) {
+      if (poison) {
+        extra = `<div class="poison">⚠ GIFTPFLANZE — NICHT ANWENDEN
+          <small>${esc(m.herb.safe.warn || '')}</small></div>
+        <div class="acts"><button class="btn btn-o" onclick="openHerb('${m.herb.id}')">Merkmale & Warnung ansehen</button></div>`;
+      } else if (danger) {
         extra = `<div class="banner" style="margin:10px 0 0">⚠ ${esc((m.conf.t || '').toUpperCase())} — das ist ein bekannter Doppelgänger von ${esc(m.herb.common)}!</div>
         <p class="pnote">${esc(m.conf.note)}</p>
         <div class="acts"><button class="btn btn-o" onclick="openHerb('${m.herb.id}')">Verwechslung ansehen</button></div>`;
@@ -1116,7 +1136,8 @@ async function saveHist(top) {
   const entry = {
     ts, name: top.name, common: top.common || '', score: top.score,
     herbId: m && m.type === 'herb' ? m.herb.id : (m && m.type === 'conf' ? m.herb.id : null),
-    danger: !!(m && m.type === 'conf' && /giftig|lebensge/.test(m.conf.t || ''))
+    danger: !!(m && ((m.type === 'conf' && /giftig|lebensge/.test(m.conf.t || '')) ||
+                     (m.type === 'herb' && isPoison(m.herb))))
   };
   idHist.unshift(entry);
   idHist = idHist.slice(0, 60);
@@ -1300,7 +1321,12 @@ async function aiDraft(latin, common, id) {
 
 function approveDraft(id) {
   const h = herbs.find(x => x.id === id); if (!h) return;
-  if (!confirm('Entwurf freigeben?\n\nDamit bestätigst du, dass du die Angaben geprüft hast —\ninsbesondere Verwechslungen, Toxine und Kontraindikationen.')) return;
+  if (!allChecked(id)) {
+    msg = { ok: 0, t: 'Erst alle vier Prüfpunkte abhaken — im Prüf-Eingang.' };
+    render(); return;
+  }
+  if (!confirm('„' + h.common + '" freigeben?\n\nDamit bestätigst du als Arzt, dass du Verwechslungen,\n' +
+      'Toxin-Grenzen, Kontraindikationen und Evidenz geprüft hast.')) return;
   h._draft = 0; h.approved = Date.now();
   const imp = LS.get('imported', []).map(x => x.id === id ? h : x);
   LS.set('imported', imp);
@@ -1314,6 +1340,7 @@ const ORIGIN = {
   core:  ['org-core',  'kuratiert'],
   json:  ['org-json',  'importiert'],
   ai:    ['org-ai',    'KI-erzeugt'],
+  auto:  ['org-auto',  'KI-recherchiert'],
 };
 function originOf(h) {
   if (h._stub) return 'stub';
@@ -1322,10 +1349,11 @@ function originOf(h) {
 }
 function originBadge(h) {
   const o = originOf(h);
-  if (o === 'stub') return '<span class="org org-stub">Merkposten</span>';
+  const poison = isPoison(h) ? '<span class="org org-poison">GIFTPFLANZE</span>' : '';
+  if (o === 'stub') return poison + '<span class="org org-stub">Merkposten</span>';
   const [cls, lab] = ORIGIN[o] || ORIGIN.json;
   const draft = h._draft ? '<span class="org org-draft">ungeprüft</span>' : '';
-  return `<span class="org ${cls}">${lab}</span>${draft}`;
+  return `${poison}<span class="org ${cls}">${lab}</span>${draft}`;
 }
 
 /* ================= ZURÜCK-TASTE (Android) ================= */
@@ -1489,9 +1517,11 @@ const FILTERS = [
     ['kultur',   'nur Kultur',            h => /kultur/i.test(h.region || '') && !/wild/i.test(h.region || '')],
   ]],
   ['Herkunft', [
+    ['poison',   'Giftpflanze (Warneintrag)', h => isPoison(h)],
     ['o-core',   'kuratiert',             h => originOf(h) === 'core'],
     ['o-json',   'importiert',            h => originOf(h) === 'json'],
-    ['o-ai',     'KI-erzeugt',            h => originOf(h) === 'ai'],
+    ['o-ai',     'KI-erzeugt (App)',      h => originOf(h) === 'ai'],
+    ['o-auto',   'KI-recherchiert (Repo)',h => originOf(h) === 'auto'],
     ['o-draft',  'ungeprüft',             h => !!h._draft],
     ['o-stub',   'Merkposten',            h => !!h._stub],
   ]],
@@ -1553,6 +1583,159 @@ async function addPnPhoto(herbId) {
   render();
 }
 
+
+/* ================= WARNEINTRÄGE (Giftpflanzen) ================= */
+const isPoison = h => !!(h && h.safe && h.safe.flags && h.safe.flags.not_for_use);
+
+/* ================= GITHUB-ABGLEICH ================= */
+let gh = LS.get('gh', { owner: 'M23-sys', repo: 'herbs_auto', branch: 'claude/main', path: 'fertig', token: '' });
+let ghBusy = false;
+
+function saveGh() {
+  const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  gh = {
+    owner: g('gho') || gh.owner, repo: g('ghr') || gh.repo,
+    branch: g('ghb') || gh.branch, path: g('ghp') || gh.path,
+    token: (g('ght') || gh.token).replace(/^["'\s]+|["'\s]+$/g, '')
+  };
+  LS.set('gh', gh);
+  msg = { ok: 1, t: 'Repo gespeichert. Der Token bleibt nur auf diesem Gerät.' };
+  render();
+}
+
+async function ghApi(path, opts) {
+  const o = opts || {};
+  const headers = Object.assign({ 'Accept': 'application/vnd.github+json' }, o.headers || {});
+  if (gh.token) headers['Authorization'] = 'Bearer ' + gh.token;
+  const r = await fetch('https://api.github.com' + path, Object.assign({}, o, { headers }));
+  if (r.status === 401 || r.status === 403) {
+    const j = await r.json().catch(() => ({}));
+    throw new Error('GitHub verweigert (' + r.status + '): ' + (j.message || 'Token prüfen') +
+      (r.status === 403 && !gh.token ? '\n\nOhne Token sind nur 60 Anfragen/Stunde erlaubt.' : ''));
+  }
+  if (r.status === 404) throw new Error('Nicht gefunden (404). Stimmen Repo, Branch und Ordner?');
+  if (!r.ok) throw new Error('GitHub HTTP ' + r.status);
+  return r;
+}
+
+/* Monographien aus dem Repo holen */
+async function ghSync() {
+  if (!gh.owner || !gh.repo) { msg = { ok: 0, t: 'Repo nicht konfiguriert.' }; render(); return; }
+  ghBusy = true; msg = { ok: 1, t: 'Lese ' + gh.owner + '/' + gh.repo + ' …' }; render();
+  try {
+    const r = await ghApi('/repos/' + gh.owner + '/' + gh.repo + '/contents/' +
+      encodeURIComponent(gh.path).replace(/%2F/g, '/') + '?ref=' + encodeURIComponent(gh.branch));
+    const files = (await r.json()).filter(f =>
+      f.type === 'file' && f.name.endsWith('.json') && f.name !== 'index.json');
+
+    let neu = 0, upd = 0, gleich = 0;
+    const konflikte = [];
+
+    for (const f of files) {
+      const local = herbs.find(h => h.repoFile === f.name);
+      if (local && local.sha === f.sha) { gleich++; continue; }
+      // Bereits freigegeben und im Repo geändert? -> nicht heimlich überschreiben
+      if (local && local.approved) { konflikte.push({ f, local }); continue; }
+
+      const rf = await ghApi('/repos/' + gh.owner + '/' + gh.repo + '/contents/' +
+        encodeURIComponent(gh.path).replace(/%2F/g, '/') + '/' + encodeURIComponent(f.name) +
+        '?ref=' + encodeURIComponent(gh.branch), { headers: { 'Accept': 'application/vnd.github.raw' } });
+      const obj = JSON.parse(await rf.text());
+      const h = normalize(obj);
+      if (!h) continue;
+      h.origin = 'auto'; h._draft = 1; h._stub = 0;
+      h.sha = f.sha; h.repoFile = f.name; h.added = Date.now();
+      const i = herbs.findIndex(x => x.id === h.id);
+      if (i >= 0) { upd++; herbs[i] = h; } else { neu++; herbs.push(h); }
+    }
+
+    // Konflikte: einzeln nachfragen
+    for (const { f, local } of konflikte) {
+      if (!confirm('„' + local.common + '" hast du bereits geprüft und freigegeben.\n\n' +
+          'Im Repo liegt eine NEUERE Fassung.\n\nÜberschreiben? Deine Freigabe wird dann zurückgesetzt,\n' +
+          'die Monographie muss erneut geprüft werden.\n\n(Notizen, Fotos und Fundorte bleiben erhalten.)')) continue;
+      const rf = await ghApi('/repos/' + gh.owner + '/' + gh.repo + '/contents/' +
+        encodeURIComponent(gh.path).replace(/%2F/g, '/') + '/' + encodeURIComponent(f.name) +
+        '?ref=' + encodeURIComponent(gh.branch), { headers: { 'Accept': 'application/vnd.github.raw' } });
+      const h = normalize(JSON.parse(await rf.text()));
+      if (!h) continue;
+      h.origin = 'auto'; h._draft = 1; h.approved = 0;
+      h.sha = f.sha; h.repoFile = f.name; h.added = Date.now();
+      herbs[herbs.findIndex(x => x.id === h.id)] = h;
+      upd++;
+    }
+
+    // Merkposten/Wünsche entfernen, für die jetzt eine Monographie da ist
+    for (const h of herbs) if (h._draft && h.origin === 'auto') {
+      wish = wish.filter(w => w.id !== h.id);
+      const st = herbs.find(x => x.id === h.id && x._stub);
+      if (st) st._stub = 0;
+    }
+    LS.set('wish', wish);
+    LS.set('imported', herbs.filter(h => h.origin !== 'core'));
+
+    const zuPruefen = herbs.filter(h => h._draft).length;
+    msg = { ok: 1, t: `${neu} neu, ${upd} aktualisiert, ${gleich} unverändert.` +
+      (zuPruefen ? `\n${zuPruefen} Monographie(n) warten im Prüf-Eingang.` : '') };
+  } catch (e) {
+    msg = { ok: 0, t: e.message.includes('Failed to fetch')
+      ? 'Keine Verbindung zu GitHub. Online?' : e.message };
+  }
+  ghBusy = false; render();
+}
+
+/* Wunschliste ins Repo schreiben */
+async function ghPushWish() {
+  if (!gh.token) { msg = { ok: 0, t: 'Zum Schreiben wird ein Token mit Schreibrechten gebraucht.' }; render(); return; }
+  const stubs = herbs.filter(h => h._stub);
+  const all = [...stubs.map(h => ({ id: h.id, common: h.common, latin: h.latin, quelle: 'Merkposten' })),
+               ...wish.map(w => ({ id: w.id, common: w.common || w.latin, latin: w.latin, quelle: 'manuell' }))];
+  if (!all.length) { msg = { ok: 0, t: 'Wunschliste ist leer.' }; render(); return; }
+  if (!confirm('Wunschliste mit ' + all.length + ' Einträgen ins Repo schreiben?\n\n' +
+      gh.owner + '/' + gh.repo + ' → wunschliste.json')) return;
+
+  ghBusy = true; msg = { ok: 1, t: 'Schreibe Wunschliste …' }; render();
+  try {
+    const body = { stand: new Date().toISOString(), anzahl: all.length, kandidaten: all };
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(body, null, 2))));
+    // vorhandene Datei? -> sha nötig
+    let sha = null;
+    try {
+      const r = await ghApi('/repos/' + gh.owner + '/' + gh.repo + '/contents/wunschliste.json?ref=' +
+        encodeURIComponent(gh.branch));
+      sha = (await r.json()).sha;
+    } catch (e) { /* existiert noch nicht */ }
+
+    await ghApi('/repos/' + gh.owner + '/' + gh.repo + '/contents/wunschliste.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Wunschliste aus dem Herbarium (' + all.length + ' Kandidaten)',
+        content, branch: gh.branch, sha: sha || undefined
+      })
+    });
+    msg = { ok: 1, t: all.length + ' Kandidaten ins Repo geschrieben. Die Routine kann sie abarbeiten.' };
+  } catch (e) {
+    msg = { ok: 0, t: 'Schreiben fehlgeschlagen: ' + e.message };
+  }
+  ghBusy = false; render();
+}
+
+/* ================= PRÜF-EINGANG ================= */
+const CHECKS = [
+  ['conf',  'Verwechslungen geprüft',   'Sind alle giftigen Doppelgänger erfasst? Ein leeres Feld sieht aus wie „ungefährlich".'],
+  ['tox',   'Toxine & Grenzwerte',      'Stimmen Toxin-Typ, Dosisgrenze und maximale Anwendungsdauer?'],
+  ['ci',    'Kontraindikationen',       'Schwangerschaft, Interaktionen, Vorerkrankungen — vollständig?'],
+  ['ev',    'Evidenz & Quellen',        'Deckt sich der Evidenzgrad mit HMPC/ESCOP? Kein geschöntes WEU?'],
+];
+let checked = {};   // {herbId: {conf:true, ...}}
+function toggleChk(id, k) {
+  checked[id] = checked[id] || {};
+  checked[id][k] = !checked[id][k];
+  render();
+}
+const allChecked = id => CHECKS.every(([k]) => (checked[id] || {})[k]);
+
 /* ---------- Router ---------- */
 let view = 'search', sel = null, layer = 'feld', reg = 'verw', calM = new Date().getMonth() + 1, q = '', catQ = '', msg = null;
 const app = document.getElementById('app');
@@ -1561,7 +1744,7 @@ document.querySelectorAll('nav.bot button').forEach(b =>
 
 function nav() {
   document.querySelectorAll('nav.bot button').forEach(b => b.classList.toggle('on', b.dataset.v === view && !sel));
-  document.getElementById("sub").textContent = herbs.length + " Kräuter · v16";
+  document.getElementById("sub").textContent = herbs.length + " Kräuter · v17";
 }
 function openHerb(id) {
   const h = herbs.find(x => x.id === id); if (!h) return;
@@ -1605,7 +1788,7 @@ function vSearch() {
 }
 
 function vCal() {
-  const due = herbs.filter(h => (h.harv.m || []).includes(calM)).sort((a, b) => a.common.localeCompare(b.common));
+  const due = herbs.filter(h => !isPoison(h) && (h.harv.m || []).includes(calM)).sort((a, b) => a.common.localeCompare(b.common));
   return `<p class="eyebrow">Aus den Ernte-Zeitfenstern generiert</p><h1>Erntekalender</h1>
   <p class="lede">Was ist wann fällig — quer über die ganze Sammlung.</p>
   <div class="calm">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m =>
@@ -1675,6 +1858,49 @@ function vCat() {
     <div class="bar"><div style="width:${Math.round(bulk.done / bulk.total * 100)}%"></div></div></div>` : ''}
   ${msg ? `<div class="msg ${msg.ok ? 'ok' : 'err'}" style="white-space:pre-wrap">${esc(msg.t)}</div>` : ''}
 
+  ${(() => { const drafts = herbs.filter(h => h._draft); if (!drafts.length) return ''; return `
+  <details class="block" open><summary class="btitle" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
+    <span style="color:var(--amber)">⚠ Prüf-Eingang · ${drafts.length}</span><span style="font-size:13px">▾</span></summary>
+    <div style="margin-top:10px">
+    <p class="soft" style="font-size:13px">Ungeprüfte Monographien. Erst freigeben, wenn du die vier Punkte kontrolliert hast.</p>
+    ${drafts.map(h => `<div class="block" style="margin:10px 0;background:var(--surface2)">
+      <div class="crow">
+        <img class="cthumb" data-k="${h.id}:0" alt="">
+        <div class="cbody"><div class="cname">${esc(h.common)}</div>
+          <div class="latin">${esc(h.latin)}</div><div style="margin-top:4px">${originBadge(h)}</div></div>
+      </div>
+      <div style="margin-top:10px">
+      ${CHECKS.map(([k, lab, hint]) => `<label class="chk">
+        <input type="checkbox" ${(checked[h.id] || {})[k] ? 'checked' : ''} onchange="toggleChk('${h.id}','${k}')">
+        <span class="ct"><b>${lab}</b><span>${hint}</span></span></label>`).join('')}
+      </div>
+      <div class="acts">
+        <button class="btn btn-o" onclick="openHerb('${h.id}')">Ansehen</button>
+        <button class="btn" onclick="approveDraft('${h.id}')" ${allChecked(h.id) ? '' : 'disabled style="opacity:.45"'}>
+          ${allChecked(h.id) ? '✓ Freigeben' : 'Erst prüfen'}</button>
+        <button class="btn btn-o" onclick="delHerb('${h.id}')">🗑</button>
+      </div>
+    </div>`).join('')}
+    </div>
+  </details>`; })()}
+
+  <details class="block"><summary class="btitle" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
+    <span>GitHub-Abgleich</span><span style="font-size:13px">▾</span></summary>
+    <div style="margin-top:10px">
+    <div class="ghrow"><input id="gho" placeholder="Benutzer" value="${esc(gh.owner)}">
+      <input id="ghr" placeholder="Repo" value="${esc(gh.repo)}"></div>
+    <div class="ghrow"><input id="ghb" placeholder="Branch" value="${esc(gh.branch)}">
+      <input id="ghp" placeholder="Ordner" value="${esc(gh.path)}"></div>
+    <input id="ght" class="key" placeholder="Token (github_pat_… — Schreibrechte)" value="${esc(gh.token)}">
+    <div class="acts">
+      <button class="btn btn-o" onclick="saveGh()">Speichern</button>
+      <button class="btn" onclick="ghSync()" ${ghBusy ? 'disabled' : ''}>⟳ Monographien holen</button>
+      <button class="btn btn-o" onclick="ghPushWish()" ${ghBusy ? 'disabled' : ''}>⬆ Wunschliste senden</button>
+    </div>
+    <p class="lfoot" style="border:none">Geholte Monographien landen als <b>ungeprüft</b> im Prüf-Eingang. Der Token bleibt nur auf diesem Gerät.</p>
+    </div>
+  </details>
+
   <details class="block"><summary class="btitle" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
     <span>Wunschliste · ${wAll}</span><span style="font-size:13px">▾</span></summary>
     <div style="margin-top:10px">
@@ -1730,7 +1956,10 @@ function vCat() {
 
 function vMono() {
   const h = sel, f = h.safe.flags || {}, u = ud(h.id);
-  const tabs = [['feld', 'Feld'], ['mono', 'Monographie'], ['prax', 'Praxis'], ['gart', 'Garten'], ['notiz', 'Notizen']];
+  const tabs = isPoison(h)
+    ? [['feld', 'Erkennung'], ['prax', 'Warnung'], ['notiz', 'Notizen']]
+    : [['feld', 'Feld'], ['mono', 'Monographie'], ['prax', 'Praxis'], ['gart', 'Garten'], ['notiz', 'Notizen']];
+  if (isPoison(h) && (layer === 'mono' || layer === 'gart')) layer = 'feld';
   let body = '';
   if (layer === 'feld') {
     const cap = ['Habitus', 'Merkmal', 'Merkmal'];
@@ -1807,6 +2036,8 @@ function vMono() {
   <p class="eyebrow">${esc(h.family)} · ${esc((h.part || []).join(', '))}</p>
   <h1>${esc(h.common)}</h1><p class="latin" style="font-size:14px;margin:0 0 6px">${esc(h.latin)}</p>
   <p style="margin:0 0 12px">${originBadge(h)}${h.approved ? `<span class="org org-core" style="margin-left:5px">geprüft ${new Date(h.approved).toLocaleDateString('de-DE')}</span>` : ''}</p>
+  ${isPoison(h) ? `<div class="poison">⚠ GIFTPFLANZE — KEINE ANWENDUNG
+    <small>Dieser Eintrag dient allein der Erkennung und Warnung.${h.safe.warn ? ' ' + esc(h.safe.warn) : ''}</small></div>` : ''}
   ${f.deadly_confusion ? '<div class="banner">⚠ Sicherheitskritisch: tödliche Verwechslung möglich. Bestimmung hat Vorrang vor jeder Verwendung.</div>' : ''}
   ${f.topical_only ? '<div class="banner banner-i">Nur äußerlich anwenden — nicht innerlich.</div>' : ''}
   ${h._stub ? `<div class="banner">⚠ MERKPOSTEN — noch keine medizinische Bewertung. Fotos und Fundorte kannst du bereits erfassen; Wirkung, Sicherheit und Verwechslungen fehlen noch. Nicht anwenden.</div>
@@ -1938,6 +2169,8 @@ function normalize(o) {
     gard: { site: g.site_soil || '', hard: g.hardiness || '', prop: g.propagation || '', bs: g.bodensee_suitability || '' },
     _imp: 1, origin: 'json', added: Date.now()
   };
+  // Warneintrag: keine Indikationen, dafür Giftflag — beides muss durchgereicht werden
+
 }
 function doExport() {
   const data = { imported: LS.get('imported', []), user: user, date: new Date().toISOString() };
