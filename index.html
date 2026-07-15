@@ -286,7 +286,7 @@ margin-bottom:12px;line-height:1.4}
 </style>
 </head>
 <body>
-<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v18</div></div></header>
+<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v19</div></div></header>
 <main id="app"></main>
 <div id="modal" class="modal" style="display:none" onclick="closePicker()"></div>
 <div id="lbwrap"></div>
@@ -1595,6 +1595,82 @@ function findExisting(h) {
     names.includes(sp(x.latin)) || (x.syn || []).some(s => names.includes(sp(s))));
 }
 
+/* ================= DEDUPLIKATION ================= */
+/* Botanischer Fingerabdruck: Gattung + Art, klein, ohne Autorenkürzel */
+function fingerprint(h) {
+  return sp(h.latin || '');           // sp() nimmt schon die ersten zwei Wörter, kleingeschrieben
+}
+/* Alle Namen eines Eintrags (Hauptname + Synonyme) als Fingerabdruck-Menge */
+function allPrints(h) {
+  const s = new Set();
+  if (h.latin) s.add(sp(h.latin));
+  for (const syn of (h.syn || [])) if (syn) s.add(sp(syn));
+  return s;
+}
+/* Rang: höher = wertvoller. Bei Kollision bleibt der höhere Rang. */
+const ORIGIN_RANK = { core: 4, json: 3, auto: 2, ai: 1, stub: 0 };
+function rankOf(h) {
+  if (h._stub) return ORIGIN_RANK.stub;
+  return ORIGIN_RANK[originOf(h)] ?? 1;
+}
+/* Zwei Einträge betreffen dieselbe Pflanze? */
+function samePlant(a, b) {
+  if (a.id === b.id) return true;
+  const pa = allPrints(a), pb = allPrints(b);
+  for (const p of pa) if (p && pb.has(p)) return true;
+  return false;
+}
+/* Nutzer-Layer vom weichenden auf den bleibenden Eintrag übertragen — nur wenn nötig */
+async function rescueUserLayer(loser, winner) {
+  const lu = user[loser.id];
+  if (!lu) return;
+  const hasData = (lu.notes || '').trim() || (lu.photos || []).length || (lu.loc || '').trim();
+  if (!hasData) return;
+  const wu = ud(winner.id);
+  // Notizen zusammenführen, Fotos anhängen, Fundort übernehmen falls leer
+  const mergedNotes = [wu.notes, lu.notes].filter(x => (x || '').trim()).join('\n---\n');
+  const mergedPhotos = [...(wu.photos || []), ...(lu.photos || [])];
+  setUd(winner.id, {
+    notes: mergedNotes,
+    photos: mergedPhotos,
+    loc: (wu.loc || '').trim() ? wu.loc : (lu.loc || '')
+  });
+  // Fundorte umhängen (sie zeigen per herb-ID auf den weichenden Eintrag)
+  let moved = 0;
+  for (const f of finds) if (f.herb === loser.id) { f.herb = winner.id; moved++; }
+  if (moved) saveFinds();
+  delete user[loser.id]; LS.set('user', user);
+}
+/* Einmaliger Aufräum-Durchgang: bestehende Dubletten still zusammenführen */
+async function dedupeCatalog() {
+  let merged = 0;
+  const seen = [];   // bereits behaltene Einträge
+  const keep = [];
+  for (const h of herbs) {
+    // Giftpflanzen-Warneinträge NIEMALS mit Heilkräutern verschmelzen
+    const partnerIdx = seen.findIndex(k => samePlant(k, h) && isPoison(k) === isPoison(h));
+    if (partnerIdx < 0) { seen.push(h); keep.push(h); continue; }
+    // Kollision: Gewinner nach Rang, bei Gleichstand die neuere Fassung
+    const other = seen[partnerIdx];
+    let winner = other, loser = h;
+    const ra = rankOf(other), rb = rankOf(h);
+    if (rb > ra || (rb === ra && (h.added || 0) > (other.added || 0))) { winner = h; loser = other; }
+    await rescueUserLayer(loser, winner);
+    // Gewinner an der Stelle des zuerst gesehenen behalten
+    const ki = keep.indexOf(other);
+    if (winner === h && ki >= 0) { keep[ki] = h; seen[partnerIdx] = h; }
+    merged++;
+  }
+  if (merged) {
+    herbs = keep;
+    LS.set('imported', herbs.filter(x => originOf(x) !== 'core' || x.sha));
+    msg = { ok: 1, t: merged + ' Dublette(n) zusammengeführt.' };
+    render();
+  }
+  return merged;
+}
+
+
 /* ================= GITHUB-ABGLEICH ================= */
 let myRegion = LS.get('myRegion', 'Bodensee');
 function saveRegion() {
@@ -1666,16 +1742,19 @@ async function ghSync() {
       h.origin = originFromFile(obj);
       h.sha = f.sha; h.repoFile = f.name; h._draft = 0; h._stub = 0;
 
-      const ex = findExisting(h);
+      // Betrifft die Repo-Fassung eine Pflanze, die es schon gibt? (auch unter Synonym/anderem Namen)
+      const ex = herbs.find(x => samePlant(x, h) && isPoison(x) === isPoison(h));
       if (ex) {
-        if (ex.id !== h.id) {
-          msg = { ok: 0, t: 'Dublette: „' + h.common + '" (' + h.latin + ') ist schon als „' +
-            ex.common + '" (' + ex.latin + ') vorhanden. Übersprungen — bitte im Repo klären.' };
-          uebersprungen++; continue;
+        const rNew = rankOf(h), rOld = rankOf(ex);
+        // Gewinnt die neue Fassung (höherer Rang, oder gleicher Rang = Aktualisierung)?
+        if (rNew > rOld || (rNew === rOld && ex.sha !== h.sha)) {
+          await rescueUserLayer(ex, h);
+          h.added = ex.added || Date.now();
+          herbs[herbs.indexOf(ex)] = h;
+          upd++;
+        } else {
+          uebersprungen++;   // vorhandener Eintrag ist höherwertig — Repo-Fassung verwerfen
         }
-        h.added = ex.added || Date.now();
-        herbs[herbs.indexOf(ex)] = h;
-        upd++;
       } else {
         h.added = Date.now();
         herbs.push(h);
@@ -1824,7 +1903,7 @@ document.querySelectorAll('nav.bot button').forEach(b =>
 
 function nav() {
   document.querySelectorAll('nav.bot button').forEach(b => b.classList.toggle('on', b.dataset.v === view && !sel));
-  document.getElementById("sub").textContent = herbs.length + " Kräuter · v18";
+  document.getElementById("sub").textContent = herbs.length + " Kräuter · v19";
 }
 function openHerb(id) {
   const h = herbs.find(x => x.id === id); if (!h) return;
@@ -1950,6 +2029,7 @@ function vCat() {
       <button class="btn btn-o" onclick="saveGh()">Speichern</button>
       <button class="btn" onclick="ghSync()" ${ghBusy ? 'disabled' : ''}>⟳ Monographien holen</button>
       <button class="btn btn-o" onclick="ghPushWish()" ${ghBusy ? 'disabled' : ''}>⬆ Wunschliste senden</button>
+      <button class="btn btn-o" onclick="dedupeCatalog()">⧉ Dubletten prüfen</button>
     </div>
     <div class="ghrow" style="margin-top:8px">
       <input id="ghreg" placeholder="Deine Region (z. B. Bodensee)" value="${esc(myRegion)}">
@@ -2280,6 +2360,7 @@ function render() {
 }
 render();
 migratePhotos();
+dedupeCatalog();
 history.replaceState({ d: 0 }, '');
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script></body></html>
