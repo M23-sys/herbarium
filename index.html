@@ -286,7 +286,7 @@ margin-bottom:12px;line-height:1.4}
 </style>
 </head>
 <body>
-<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v17</div></div></header>
+<header class="top"><span class="mark">✽</span><div><div class="brandn">Herbarium clinicum</div><div class="brands" id="sub">14 Kräuter · v18</div></div></header>
 <main id="app"></main>
 <div id="modal" class="modal" style="display:none" onclick="closePicker()"></div>
 <div id="lbwrap"></div>
@@ -950,7 +950,8 @@ const sp = s => norm(s).split(' ').slice(0, 2).join(' ');
 function matchCatalog(latin) {
   const n = sp(latin);
   if (!n) return null;
-  const herb = herbs.find(h => sp(h.latin) === n);
+  // Auch unter lateinischen Altnamen suchen (Rosmarinus officinalis -> Salvia rosmarinus)
+  const herb = herbs.find(h => sp(h.latin) === n || (h.syn || []).some(s => sp(s) === n));
   if (herb) return { type: 'herb', herb };
   for (const h of herbs) for (const c of (h.conf || [])) {
     if (c.l && sp(c.l) === n) return { type: 'conf', herb: h, conf: c };
@@ -1102,6 +1103,7 @@ function addStub(latin, common) {
       'MERKPOSTEN — noch keine medizinische Bewertung. Nicht anwenden, bevor eine vollständige Monographie vorliegt.' },
     harv: { t: '', m: [], o: '', st: '' },
     gard: { site: '', hard: '', prop: '', bs: '' },
+    region: myRegion || '',
     _stub: 1, _imp: 1, origin: 'json', added: Date.now()
   };
   herbs.push(stub);
@@ -1169,7 +1171,7 @@ function addWish(latin, common) {
   const la = (latin || '').trim(); if (!la) return;
   const id = slugify(la) || la.toLowerCase();
   if (wish.some(w => w.id === id)) { msg = { ok: 0, t: 'Steht schon auf der Liste.' }; render(); return; }
-  wish.push({ id, latin: la, common: (common || '').trim() });
+  wish.push({ id, latin: la, common: (common || '').trim(), region: myRegion || '' });
   LS.set('wish', wish);
   msg = { ok: 1, t: '„' + (common || la) + '" zur Wunschliste hinzugefügt.' };
   render();
@@ -1210,8 +1212,10 @@ async function delHerb(id) {
   if (!confirm('Eintrag löschen?\n\n' + h.common + ' (' + h.latin + ')\n\n' +
       'Dabei werden auch gelöscht:\n· ' + nFinds + ' Fundort(e)\n· zugehörige Bilder und Notizen\n\n' +
       'Das lässt sich nicht rückgängig machen.')) return;
+  if (h.repoFile) ignore(h);          // sonst käme sie beim nächsten Abgleich zurück
   herbs = herbs.filter(x => x.id !== id);
   LS.set('imported', LS.get('imported', []).filter(x => x.id !== id));
+  delete seen[id]; LS.set('seen', seen);
   finds = finds.filter(f => f.herb !== id); saveFinds();
   delete user[id]; LS.set('user', user);
   for (const k of await IDB.keys()) if (String(k).startsWith(id + ':')) await IDB.del(k);
@@ -1302,14 +1306,18 @@ async function aiDraft(latin, common, id) {
     const h = normalize(obj);
     if (!h) throw new Error('Antwort passte nicht ins Schema (id oder indications fehlten).');
 
-    h._draft = 1; h._stub = 0; h.origin = 'ai'; h.added = Date.now();
+    h._draft = 0; h._stub = 0; h.origin = 'ai'; h.added = Date.now(); h.stand = '';
     const i = herbs.findIndex(x => x.id === h.id);
     if (i >= 0) herbs[i] = h; else herbs.push(h);
     const imp = LS.get('imported', []).filter(x => x.id !== h.id);
     imp.push(h); LS.set('imported', imp);
-    wish = wish.filter(w => w.id !== h.id); LS.set('wish', wish);
+    // Trotzdem auf die Wunschliste: die recherchierte Fassung soll den Schnellschuss ersetzen
+    if (!wish.some(w => w.id === h.id))
+      wish.push({ id: h.id, latin: h.latin, common: h.common, region: myRegion || '' });
+    LS.set('wish', wish);
 
-    msg = { ok: 1, t: 'ENTWURF für „' + h.common + '" erstellt — bitte prüfen und freigeben.' };
+    msg = { ok: 1, t: 'Sofort-Fassung für „' + h.common + '" erstellt (KI-erzeugt, ungeprüft).\n' +
+      'Steht weiter auf der Wunschliste — die recherchierte Fassung ersetzt sie später.' };
     sel = h; layer = 'mono';
   } catch (e) {
     msg = { ok: 0, t: (e.message.includes('Failed to fetch') || e.message.includes('NetworkError'))
@@ -1318,22 +1326,6 @@ async function aiDraft(latin, common, id) {
   }
   aiBusy = false; render();
 }
-
-function approveDraft(id) {
-  const h = herbs.find(x => x.id === id); if (!h) return;
-  if (!allChecked(id)) {
-    msg = { ok: 0, t: 'Erst alle vier Prüfpunkte abhaken — im Prüf-Eingang.' };
-    render(); return;
-  }
-  if (!confirm('„' + h.common + '" freigeben?\n\nDamit bestätigst du als Arzt, dass du Verwechslungen,\n' +
-      'Toxin-Grenzen, Kontraindikationen und Evidenz geprüft hast.')) return;
-  h._draft = 0; h.approved = Date.now();
-  const imp = LS.get('imported', []).map(x => x.id === id ? h : x);
-  LS.set('imported', imp);
-  msg = { ok: 1, t: 'Freigegeben.' };
-  render();
-}
-
 
 /* ================= HERKUNFT ================= */
 const ORIGIN = {
@@ -1345,15 +1337,22 @@ const ORIGIN = {
 function originOf(h) {
   if (h._stub) return 'stub';
   if (h.origin) return h.origin;
-  return 'json';                       // Altbestand ohne Feld
+  return 'json';
+}
+/* Die JSON-Datei erklärt ihre eigene Herkunft. Fehlt das Feld, gilt sie als KI-recherchiert. */
+function originFromFile(o) {
+  const v = String(o.herkunft || '').toLowerCase();
+  if (v.startsWith('kurat')) return 'core';
+  if (v.startsWith('import')) return 'json';
+  return 'auto';
 }
 function originBadge(h) {
   const o = originOf(h);
   const poison = isPoison(h) ? '<span class="org org-poison">GIFTPFLANZE</span>' : '';
   if (o === 'stub') return poison + '<span class="org org-stub">Merkposten</span>';
+  if (o === 'ai') return poison + '<span class="org org-ai">KI-erzeugt (ungeprüft)</span>';
   const [cls, lab] = ORIGIN[o] || ORIGIN.json;
-  const draft = h._draft ? '<span class="org org-draft">ungeprüft</span>' : '';
-  return `${poison}<span class="org ${cls}">${lab}</span>${draft}`;
+  return `${poison}<span class="org ${cls}">${lab}</span>`;
 }
 
 /* ================= ZURÜCK-TASTE (Android) ================= */
@@ -1522,7 +1521,7 @@ const FILTERS = [
     ['o-json',   'importiert',            h => originOf(h) === 'json'],
     ['o-ai',     'KI-erzeugt (App)',      h => originOf(h) === 'ai'],
     ['o-auto',   'KI-recherchiert (Repo)',h => originOf(h) === 'auto'],
-    ['o-draft',  'ungeprüft',             h => !!h._draft],
+    ['unseen',   'ungesichtet',           h => !isSeen(h)],
     ['o-stub',   'Merkposten',            h => !!h._stub],
   ]],
 ];
@@ -1531,6 +1530,7 @@ FILTERS.forEach(([g, items]) => items.forEach(([id, lab, test]) => FMAP[id] = te
 
 const SORTS = [
   ['new',     'Zuletzt hinzugefügt'],
+  ['unseen',  'Ungesichtete zuerst'],
   ['az',      'A–Z'],
   ['ev',      'Evidenz (stärkste zuerst)'],
   ['harvest', 'Erntereife (jetzt zuerst)'],
@@ -1543,6 +1543,7 @@ function applySortFilter(list) {
   let r = list.filter(h => [...filt].every(f => FMAP[f] ? FMAP[f](h) : true));
   const cmp = {
     new:     (a, b) => (b.added || 0) - (a.added || 0),
+    unseen:  (a, b) => (isSeen(a) ? 1 : 0) - (isSeen(b) ? 1 : 0) || (b.added || 0) - (a.added || 0),
     az:      (a, b) => a.common.localeCompare(b.common),
     ev:      (a, b) => maxEv(b) - maxEv(a) || a.common.localeCompare(b.common),
     harvest: (a, b) => ((b.harv.m || []).includes(nowM()) ? 1 : 0) - ((a.harv.m || []).includes(nowM()) ? 1 : 0)
@@ -1587,7 +1588,21 @@ async function addPnPhoto(herbId) {
 /* ================= WARNEINTRÄGE (Giftpflanzen) ================= */
 const isPoison = h => !!(h && h.safe && h.safe.flags && h.safe.flags.not_for_use);
 
+/* Findet einen bestehenden Eintrag, auch unter Altnamen */
+function findExisting(h) {
+  const names = [h.latin, ...(h.syn || [])].map(sp);
+  return herbs.find(x => x.id === h.id ||
+    names.includes(sp(x.latin)) || (x.syn || []).some(s => names.includes(sp(s))));
+}
+
 /* ================= GITHUB-ABGLEICH ================= */
+let myRegion = LS.get('myRegion', 'Bodensee');
+function saveRegion() {
+  const i = document.getElementById('ghreg'); if (!i) return;
+  myRegion = i.value.trim(); LS.set('myRegion', myRegion);
+  msg = { ok: 1, t: myRegion ? 'Region gesetzt: ' + myRegion : 'Region entfernt.' };
+  render();
+}
 let gh = LS.get('gh', { owner: 'M23-sys', repo: 'herbs_auto', branch: 'claude/main', path: 'fertig', token: '' });
 let ghBusy = false;
 
@@ -1618,7 +1633,15 @@ async function ghApi(path, opts) {
   return r;
 }
 
-/* Monographien aus dem Repo holen */
+/* ---- Repo-Datei lesen (roh) ---- */
+async function ghRaw(file) {
+  const r = await ghApi('/repos/' + gh.owner + '/' + gh.repo + '/contents/' + file +
+    '?ref=' + encodeURIComponent(gh.branch), { headers: { 'Accept': 'application/vnd.github.raw' } });
+  return await r.text();
+}
+const ghPath = f => encodeURIComponent(gh.path).replace(/%2F/g, '/') + '/' + encodeURIComponent(f);
+
+/* ---- Monographien holen ---- */
 async function ghSync() {
   if (!gh.owner || !gh.repo) { msg = { ok: 0, t: 'Repo nicht konfiguriert.' }; render(); return; }
   ghBusy = true; msg = { ok: 1, t: 'Lese ' + gh.owner + '/' + gh.repo + ' …' }; render();
@@ -1628,114 +1651,171 @@ async function ghSync() {
     const files = (await r.json()).filter(f =>
       f.type === 'file' && f.name.endsWith('.json') && f.name !== 'index.json');
 
-    let neu = 0, upd = 0, gleich = 0;
-    const konflikte = [];
+    let neu = 0, upd = 0, gleich = 0, uebersprungen = 0;
 
     for (const f of files) {
       const local = herbs.find(h => h.repoFile === f.name);
       if (local && local.sha === f.sha) { gleich++; continue; }
-      // Bereits freigegeben und im Repo geändert? -> nicht heimlich überschreiben
-      if (local && local.approved) { konflikte.push({ f, local }); continue; }
 
-      const rf = await ghApi('/repos/' + gh.owner + '/' + gh.repo + '/contents/' +
-        encodeURIComponent(gh.path).replace(/%2F/g, '/') + '/' + encodeURIComponent(f.name) +
-        '?ref=' + encodeURIComponent(gh.branch), { headers: { 'Accept': 'application/vnd.github.raw' } });
-      const obj = JSON.parse(await rf.text());
+      const obj = JSON.parse(await ghRaw(ghPath(f.name)));
       const h = normalize(obj);
       if (!h) continue;
-      h.origin = 'auto'; h._draft = 1; h._stub = 0;
-      h.sha = f.sha; h.repoFile = f.name; h.added = Date.now();
-      const i = herbs.findIndex(x => x.id === h.id);
-      if (i >= 0) { upd++; herbs[i] = h; } else { neu++; herbs.push(h); }
-    }
 
-    // Konflikte: einzeln nachfragen
-    for (const { f, local } of konflikte) {
-      if (!confirm('„' + local.common + '" hast du bereits geprüft und freigegeben.\n\n' +
-          'Im Repo liegt eine NEUERE Fassung.\n\nÜberschreiben? Deine Freigabe wird dann zurückgesetzt,\n' +
-          'die Monographie muss erneut geprüft werden.\n\n(Notizen, Fotos und Fundorte bleiben erhalten.)')) continue;
-      const rf = await ghApi('/repos/' + gh.owner + '/' + gh.repo + '/contents/' +
-        encodeURIComponent(gh.path).replace(/%2F/g, '/') + '/' + encodeURIComponent(f.name) +
-        '?ref=' + encodeURIComponent(gh.branch), { headers: { 'Accept': 'application/vnd.github.raw' } });
-      const h = normalize(JSON.parse(await rf.text()));
-      if (!h) continue;
-      h.origin = 'auto'; h._draft = 1; h.approved = 0;
-      h.sha = f.sha; h.repoFile = f.name; h.added = Date.now();
-      herbs[herbs.findIndex(x => x.id === h.id)] = h;
-      upd++;
-    }
+      if (ignored.some(x => x.id === h.id)) { uebersprungen++; continue; }
 
-    // Merkposten/Wünsche entfernen, für die jetzt eine Monographie da ist
-    for (const h of herbs) if (h._draft && h.origin === 'auto') {
+      h.origin = originFromFile(obj);
+      h.sha = f.sha; h.repoFile = f.name; h._draft = 0; h._stub = 0;
+
+      const ex = findExisting(h);
+      if (ex) {
+        if (ex.id !== h.id) {
+          msg = { ok: 0, t: 'Dublette: „' + h.common + '" (' + h.latin + ') ist schon als „' +
+            ex.common + '" (' + ex.latin + ') vorhanden. Übersprungen — bitte im Repo klären.' };
+          uebersprungen++; continue;
+        }
+        h.added = ex.added || Date.now();
+        herbs[herbs.indexOf(ex)] = h;
+        upd++;
+      } else {
+        h.added = Date.now();
+        herbs.push(h);
+        neu++;
+      }
+      // Wunsch/Merkposten erledigt
       wish = wish.filter(w => w.id !== h.id);
-      const st = herbs.find(x => x.id === h.id && x._stub);
-      if (st) st._stub = 0;
     }
-    LS.set('wish', wish);
-    LS.set('imported', herbs.filter(h => h.origin !== 'core'));
 
-    const zuPruefen = herbs.filter(h => h._draft).length;
-    msg = { ok: 1, t: `${neu} neu, ${upd} aktualisiert, ${gleich} unverändert.` +
-      (zuPruefen ? `\n${zuPruefen} Monographie(n) warten im Prüf-Eingang.` : '') };
+    // Changelog mitnehmen (optional)
+    try {
+      const cl = JSON.parse(await ghRaw('docs/changelog.json'));
+      changelog = (cl.eintraege || cl || []).slice(-300);
+      LS.set('changelog', changelog);
+    } catch (e) { /* keiner vorhanden — kein Problem */ }
+
+    LS.set('wish', wish);
+    LS.set('imported', herbs.filter(h => originOf(h) !== 'core' || h.sha));
+
+    const offen = herbs.filter(h => !isSeen(h)).length;
+    msg = { ok: 1, t: `${neu} neu, ${upd} aktualisiert, ${gleich} unverändert` +
+      (uebersprungen ? `, ${uebersprungen} übersprungen` : '') + '.' +
+      (offen ? `\n${offen} Monographie(n) noch nicht gesichtet.` : '') };
   } catch (e) {
-    msg = { ok: 0, t: e.message.includes('Failed to fetch')
-      ? 'Keine Verbindung zu GitHub. Online?' : e.message };
+    msg = { ok: 0, t: e.message.includes('Failed to fetch') ? 'Keine Verbindung zu GitHub. Online?' : e.message };
   }
   ghBusy = false; render();
 }
 
-/* Wunschliste ins Repo schreiben */
+/* ---- EINE Wunschliste: lesen, zusammenführen, aufräumen, zurückschreiben ---- */
+const WISHFILE = 'docs/wunschliste.json';
+
+function localWishes() {
+  const out = [];
+  for (const h of herbs) if (h._stub && !ignored.some(x => x.id === h.id))
+    out.push({ id: h.id, common: h.common, latin: h.latin, region: h.region || myRegion || '', quelle: 'Merkposten' });
+  for (const w of wish) if (!ignored.some(x => x.id === w.id))
+    out.push({ id: w.id, common: w.common || w.latin, latin: w.latin, region: w.region || myRegion || '', quelle: 'manuell' });
+  return out;
+}
+
 async function ghPushWish() {
   if (!gh.token) { msg = { ok: 0, t: 'Zum Schreiben wird ein Token mit Schreibrechten gebraucht.' }; render(); return; }
-  const stubs = herbs.filter(h => h._stub);
-  const all = [...stubs.map(h => ({ id: h.id, common: h.common, latin: h.latin, quelle: 'Merkposten' })),
-               ...wish.map(w => ({ id: w.id, common: w.common || w.latin, latin: w.latin, quelle: 'manuell' }))];
-  if (!all.length) { msg = { ok: 0, t: 'Wunschliste ist leer.' }; render(); return; }
-  if (!confirm('Wunschliste mit ' + all.length + ' Einträgen ins Repo schreiben?\n\n' +
-      gh.owner + '/' + gh.repo + ' → wunschliste.json')) return;
+  ghBusy = true; msg = { ok: 1, t: 'Führe Wunschliste zusammen …' }; render();
 
-  ghBusy = true; msg = { ok: 1, t: 'Schreibe Wunschliste …' }; render();
-  try {
-    const body = { stand: new Date().toISOString(), anzahl: all.length, kandidaten: all };
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(body, null, 2))));
-    // vorhandene Datei? -> sha nötig
-    let sha = null;
+  const versuch = async () => {
+    // 1. bestehende Liste holen (samt sha)
+    let vorhanden = [], sha = null;
     try {
-      const r = await ghApi('/repos/' + gh.owner + '/' + gh.repo + '/contents/wunschliste.json?ref=' +
-        encodeURIComponent(gh.branch));
-      sha = (await r.json()).sha;
+      const r = await ghApi('/repos/' + gh.owner + '/' + gh.repo + '/contents/' + WISHFILE +
+        '?ref=' + encodeURIComponent(gh.branch));
+      const j = await r.json();
+      sha = j.sha;
+      const txt = decodeURIComponent(escape(atob(j.content.replace(/\n/g, ''))));
+      vorhanden = (JSON.parse(txt).kandidaten) || [];
     } catch (e) { /* existiert noch nicht */ }
 
-    await ghApi('/repos/' + gh.owner + '/' + gh.repo + '/contents/wunschliste.json', {
+    // 2. zusammenführen (nach ID), 3. abgearbeitete + ignorierte entfernen
+    const erledigt = new Set(herbs.filter(h => !h._stub && h.ind && h.ind.length >= 0 && !h._stub)
+      .filter(h => !h._stub).map(h => h.id));
+    const ign = new Set(ignored.map(x => x.id));
+    const map = new Map();
+    for (const e of [...vorhanden, ...localWishes()]) {
+      if (!e || !e.id) continue;
+      if (erledigt.has(e.id) || ign.has(e.id)) continue;   // Selbstreinigung
+      map.set(e.id, Object.assign({}, map.get(e.id) || {}, e));
+    }
+    const kandidaten = [...map.values()];
+
+    const body = {
+      hinweis: 'Wird von der Herbarium-App geschrieben. Die Routine liest sie und arbeitet sie VOR der Kandidatenliste ab.',
+      stand: new Date().toISOString().slice(0, 10),
+      anzahl: kandidaten.length,
+      kandidaten
+    };
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(body, null, 2))));
+
+    const r = await fetch('https://api.github.com/repos/' + gh.owner + '/' + gh.repo + '/contents/' + WISHFILE, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Accept': 'application/vnd.github+json', 'Authorization': 'Bearer ' + gh.token,
+                 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: 'Wunschliste aus dem Herbarium (' + all.length + ' Kandidaten)',
+        message: 'Wunschliste aktualisiert (' + kandidaten.length + ' offen)',
         content, branch: gh.branch, sha: sha || undefined
       })
     });
-    msg = { ok: 1, t: all.length + ' Kandidaten ins Repo geschrieben. Die Routine kann sie abarbeiten.' };
+    if (r.status === 409) return 'konflikt';
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || 'HTTP ' + r.status); }
+    return kandidaten.length;
+  };
+
+  try {
+    let res = await versuch();
+    if (res === 'konflikt') res = await versuch();        // einmal neu zusammenführen
+    if (res === 'konflikt') throw new Error('Die Datei wurde gleichzeitig geändert. Nochmal versuchen.');
+    msg = { ok: 1, t: 'Wunschliste im Repo: ' + res + ' offene Kandidaten. Erledigte wurden entfernt.' };
   } catch (e) {
     msg = { ok: 0, t: 'Schreiben fehlgeschlagen: ' + e.message };
   }
   ghBusy = false; render();
 }
 
-/* ================= PRÜF-EINGANG ================= */
-const CHECKS = [
-  ['conf',  'Verwechslungen geprüft',   'Sind alle giftigen Doppelgänger erfasst? Ein leeres Feld sieht aus wie „ungefährlich".'],
-  ['tox',   'Toxine & Grenzwerte',      'Stimmen Toxin-Typ, Dosisgrenze und maximale Anwendungsdauer?'],
-  ['ci',    'Kontraindikationen',       'Schwangerschaft, Interaktionen, Vorerkrankungen — vollständig?'],
-  ['ev',    'Evidenz & Quellen',        'Deckt sich der Evidenzgrad mit HMPC/ESCOP? Kein geschöntes WEU?'],
-];
-let checked = {};   // {herbId: {conf:true, ...}}
-function toggleChk(id, k) {
-  checked[id] = checked[id] || {};
-  checked[id][k] = !checked[id][k];
+/* ================= GESICHTET (an die Fassung gebunden, nicht an die Pflanze) ================= */
+let seen = LS.get('seen', {});          // {id: sha}
+const shaOf = h => h.sha || 'lokal';
+function isSeen(h) {
+  if (originOf(h) === 'core' && !h.sha) return true;   // Stammbestand gilt als gesichtet
+  return seen[h.id] === shaOf(h);
+}
+function markSeen(id) {
+  const h = herbs.find(x => x.id === id); if (!h) return;
+  if (isSeen(h)) delete seen[id]; else seen[id] = shaOf(h);
+  LS.set('seen', seen);
   render();
 }
-const allChecked = id => CHECKS.every(([k]) => (checked[id] || {})[k]);
 
+/* ================= IGNORIERLISTE ================= */
+let ignored = LS.get('ignored', []);     // [{id, common, latin}] — beim Abgleich überspringen
+function ignore(h) {
+  if (!ignored.some(x => x.id === h.id)) {
+    ignored.push({ id: h.id, common: h.common, latin: h.latin });
+    LS.set('ignored', ignored);
+  }
+}
+function unignore(id) {
+  const e = ignored.find(x => x.id === id);
+  ignored = ignored.filter(x => x.id !== id);
+  LS.set('ignored', ignored);
+  msg = { ok: 1, t: '„' + (e ? e.common : id) + '" wird beim nächsten Abgleich wieder geholt.' };
+  render();
+}
+
+/* ================= CHANGELOG ================= */
+let changelog = LS.get('changelog', []);   // [{ts,id,common,art,sha,text}]
+function changeFor(h) {
+  if (!h.sha) return null;
+  const e = changelog.filter(c => c.id === h.id && c.sha === h.sha)
+                     .sort((a, b) => String(b.ts).localeCompare(String(a.ts)))[0];
+  return e || null;
+}
 /* ---------- Router ---------- */
 let view = 'search', sel = null, layer = 'feld', reg = 'verw', calM = new Date().getMonth() + 1, q = '', catQ = '', msg = null;
 const app = document.getElementById('app');
@@ -1744,7 +1824,7 @@ document.querySelectorAll('nav.bot button').forEach(b =>
 
 function nav() {
   document.querySelectorAll('nav.bot button').forEach(b => b.classList.toggle('on', b.dataset.v === view && !sel));
-  document.getElementById("sub").textContent = herbs.length + " Kräuter · v17";
+  document.getElementById("sub").textContent = herbs.length + " Kräuter · v18";
 }
 function openHerb(id) {
   const h = herbs.find(x => x.id === id); if (!h) return;
@@ -1858,32 +1938,6 @@ function vCat() {
     <div class="bar"><div style="width:${Math.round(bulk.done / bulk.total * 100)}%"></div></div></div>` : ''}
   ${msg ? `<div class="msg ${msg.ok ? 'ok' : 'err'}" style="white-space:pre-wrap">${esc(msg.t)}</div>` : ''}
 
-  ${(() => { const drafts = herbs.filter(h => h._draft); if (!drafts.length) return ''; return `
-  <details class="block" open><summary class="btitle" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
-    <span style="color:var(--amber)">⚠ Prüf-Eingang · ${drafts.length}</span><span style="font-size:13px">▾</span></summary>
-    <div style="margin-top:10px">
-    <p class="soft" style="font-size:13px">Ungeprüfte Monographien. Erst freigeben, wenn du die vier Punkte kontrolliert hast.</p>
-    ${drafts.map(h => `<div class="block" style="margin:10px 0;background:var(--surface2)">
-      <div class="crow">
-        <img class="cthumb" data-k="${h.id}:0" alt="">
-        <div class="cbody"><div class="cname">${esc(h.common)}</div>
-          <div class="latin">${esc(h.latin)}</div><div style="margin-top:4px">${originBadge(h)}</div></div>
-      </div>
-      <div style="margin-top:10px">
-      ${CHECKS.map(([k, lab, hint]) => `<label class="chk">
-        <input type="checkbox" ${(checked[h.id] || {})[k] ? 'checked' : ''} onchange="toggleChk('${h.id}','${k}')">
-        <span class="ct"><b>${lab}</b><span>${hint}</span></span></label>`).join('')}
-      </div>
-      <div class="acts">
-        <button class="btn btn-o" onclick="openHerb('${h.id}')">Ansehen</button>
-        <button class="btn" onclick="approveDraft('${h.id}')" ${allChecked(h.id) ? '' : 'disabled style="opacity:.45"'}>
-          ${allChecked(h.id) ? '✓ Freigeben' : 'Erst prüfen'}</button>
-        <button class="btn btn-o" onclick="delHerb('${h.id}')">🗑</button>
-      </div>
-    </div>`).join('')}
-    </div>
-  </details>`; })()}
-
   <details class="block"><summary class="btitle" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
     <span>GitHub-Abgleich</span><span style="font-size:13px">▾</span></summary>
     <div style="margin-top:10px">
@@ -1897,9 +1951,24 @@ function vCat() {
       <button class="btn" onclick="ghSync()" ${ghBusy ? 'disabled' : ''}>⟳ Monographien holen</button>
       <button class="btn btn-o" onclick="ghPushWish()" ${ghBusy ? 'disabled' : ''}>⬆ Wunschliste senden</button>
     </div>
-    <p class="lfoot" style="border:none">Geholte Monographien landen als <b>ungeprüft</b> im Prüf-Eingang. Der Token bleibt nur auf diesem Gerät.</p>
+    <div class="ghrow" style="margin-top:8px">
+      <input id="ghreg" placeholder="Deine Region (z. B. Bodensee)" value="${esc(myRegion)}">
+      <button class="btn btn-o" style="width:auto" onclick="saveRegion()">Region</button>
+    </div>
+    <p class="lfoot" style="border:none">Geholte Monographien landen direkt im Katalog — getaggt und <b>ungesichtet</b>. Die Wunschliste wird in <code>docs/wunschliste.json</code> zusammengeführt: neue kommen dazu, erledigte fallen raus. Token und Region bleiben auf dem Gerät; <b>keine Koordinaten</b> verlassen es.</p>
     </div>
   </details>
+
+  ${ignored.length ? `<details class="block"><summary class="btitle" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
+    <span>Ignoriert · ${ignored.length}</span><span style="font-size:13px">▾</span></summary>
+    <div style="margin-top:10px">
+    <p class="soft" style="font-size:13px">Diese Arten werden beim Abgleich übersprungen. Zurückholen, um sie wieder zu laden.</p>
+    ${ignored.map(x => `<div class="wrow">
+      <div class="wi"><div class="wn">${esc(x.common)}</div><div class="latin">${esc(x.latin)}</div></div>
+      <button class="btn btn-o" style="padding:7px 10px;font-size:11px" onclick="unignore('${x.id}')">↩ Zurückholen</button>
+    </div>`).join('')}
+    </div>
+  </details>` : ''}
 
   <details class="block"><summary class="btitle" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
     <span>Wunschliste · ${wAll}</span><span style="font-size:13px">▾</span></summary>
@@ -1908,19 +1977,19 @@ function vCat() {
     ${stubs.map(h => `<div class="wrow">
       <div class="wi" onclick="openHerb('${h.id}')"><div class="wn">${esc(h.common)}</div>
         <div class="latin">${esc(h.latin)} · Merkposten</div></div>
-      ${aiKey && pnProxy ? `<button class="btn btn-o" style="padding:7px 10px;font-size:11px" onclick="event.stopPropagation();aiDraft('${esc(h.latin)}','${esc(h.common)}','${h.id}')">✨ Entwurf</button>` : ''}
       <button class="hx" onclick="delHerb('${h.id}')">×</button></div>`).join('')}
     ${wish.map(w => `<div class="wrow">
       <div class="wi"><div class="wn">${esc(w.common || w.latin)}</div>
         <div class="latin">${esc(w.latin)} · manuell</div></div>
-      ${aiKey && pnProxy ? `<button class="btn btn-o" style="padding:7px 10px;font-size:11px" onclick="aiDraft('${esc(w.latin)}','${esc(w.common)}','${w.id}')">✨ Entwurf</button>` : ''}
       <button class="hx" onclick="delWish('${w.id}')">×</button></div>`).join('')}
     <div class="wadd">
       <input id="wla" placeholder="Botanischer Name …">
       <input id="wco" placeholder="deutsch" style="max-width:110px">
       <button class="btn" onclick="addWishManual()">＋</button>
     </div>
-    ${wAll ? '<div class="acts"><button class="btn btn-o" onclick="wishList()">📝 Als Textdatei</button></div>' : ''}
+    ${wAll ? `<div class="acts">
+      <button class="btn" onclick="ghPushWish()" ${ghBusy ? 'disabled' : ''}>⬆ Ins Repo senden</button>
+      <button class="btn btn-o" onclick="wishList()">📝 Als Textdatei</button></div>` : ''}
     </div>
   </details>
 
@@ -1947,7 +2016,7 @@ function vCat() {
       <div class="cbody">
         <div class="cname">${esc(h.common)}</div>
         <div class="latin">${esc(h.latin)}</div>
-        <div style="margin-top:5px">${originBadge(h)}</div>
+        <div style="margin-top:5px">${originBadge(h)}${!isSeen(h) ? '<span class="org org-draft">ungesichtet</span>' : ''}</div>
       </div>
     </div>
     ${flagsHTML(h)}
@@ -2035,13 +2104,20 @@ function vMono() {
   return `<button class="back" onclick="history.back()">← zurück</button>
   <p class="eyebrow">${esc(h.family)} · ${esc((h.part || []).join(', '))}</p>
   <h1>${esc(h.common)}</h1><p class="latin" style="font-size:14px;margin:0 0 6px">${esc(h.latin)}</p>
-  <p style="margin:0 0 12px">${originBadge(h)}${h.approved ? `<span class="org org-core" style="margin-left:5px">geprüft ${new Date(h.approved).toLocaleDateString('de-DE')}</span>` : ''}</p>
+  <p style="margin:0 0 10px">${originBadge(h)}${!isSeen(h) ? '<span class="org org-draft">ungesichtet</span>' : ''}</p>
+  ${h.stand ? `<p class="lfoot" style="border:none;margin:-4px 0 10px;padding:0">Recherchiert am ${esc(h.stand)}</p>` : ''}
+  ${(() => { const c = changeFor(h); return c && !isSeen(h)
+      ? `<div class="msg ok" style="white-space:pre-wrap"><b>Aktualisiert.</b> ${esc(c.text)}</div>` : ''; })()}
+  ${originOf(h) !== 'core' || h.sha ? `<div class="acts" style="margin:0 0 12px">
+    <button class="btn ${isSeen(h) ? 'btn-o' : ''}" onclick="markSeen('${h.id}')">
+      ${isSeen(h) ? '✓ gesichtet' : 'Als gesichtet merken'}</button></div>` : ''}
   ${isPoison(h) ? `<div class="poison">⚠ GIFTPFLANZE — KEINE ANWENDUNG
     <small>Dieser Eintrag dient allein der Erkennung und Warnung.${h.safe.warn ? ' ' + esc(h.safe.warn) : ''}</small></div>` : ''}
   ${f.deadly_confusion ? '<div class="banner">⚠ Sicherheitskritisch: tödliche Verwechslung möglich. Bestimmung hat Vorrang vor jeder Verwendung.</div>' : ''}
   ${f.topical_only ? '<div class="banner banner-i">Nur äußerlich anwenden — nicht innerlich.</div>' : ''}
   ${h._stub ? `<div class="banner">⚠ MERKPOSTEN — noch keine medizinische Bewertung. Fotos und Fundorte kannst du bereits erfassen; Wirkung, Sicherheit und Verwechslungen fehlen noch. Nicht anwenden.</div>
-    ${aiKey && pnProxy ? `<div class="acts"><button class="btn" onclick="aiDraft('${esc(h.latin)}','${esc(h.common)}','${h.id}')"${aiBusy ? ' disabled' : ''}>${aiBusy ? 'Claude schreibt …' : '✨ KI-Entwurf erzeugen'}</button></div>` : ''}` : ''}
+    ${aiKey && pnProxy ? `<div class="acts"><button class="btn btn-o" onclick="aiDraft('${esc(h.latin)}','${esc(h.common)}','${h.id}')"${aiBusy ? ' disabled' : ''}>${aiBusy ? 'Claude schreibt …' : '✨ Sofort-Fassung (KI, ungeprüft)'}</button></div>
+    <p class="lfoot" style="border:none">Schnelle Auskunft ohne Quellenprüfung. Das Kraut bleibt auf der Wunschliste — die recherchierte Fassung ersetzt sie.</p>` : ''}` : ''}
   ${msg ? `<div class="msg ${msg.ok ? 'ok' : 'err'}" style="white-space:pre-wrap">${esc(msg.t)}</div>` : ''}
   ${h._draft ? `<div class="draft">✎ KI-ENTWURF — nicht geprüft. Verifiziere besonders <b>Verwechslungen, Toxin-Grenzen und Kontraindikationen</b> gegen HMPC/ESCOP, bevor du dich darauf verlässt.
     <div class="acts"><button class="btn" onclick="approveDraft('${h.id}')">✓ Geprüft &amp; freigeben</button></div></div>` : ''}
@@ -2164,6 +2240,8 @@ function normalize(o) {
       int: (s.interactions || []).map(x => (x.mechanism || '') + (x.affected ? ' → ' + x.affected : '') + (x.clinical_relevance ? ' [' + x.clinical_relevance + ']' : '')),
       flags: s.flags || {}, warn: s.key_warning || '' },
     harv: { t: hp.harvest_time || '', m: hp.harvest_month_tags || [], o: hp.harvest_organ || '', st: hp.storage || '' },
+    syn: (b.synonyms || []),
+    stand: o.stand || '',
     kit: { u: (o.kitchen || {}).uses || [], note: (o.kitchen || {}).culinary_vs_medicinal || '' },
     region: ((id2.region_occurrence || []).map(r => r.status || '').join(' ')),
     gard: { site: g.site_soil || '', hard: g.hardiness || '', prop: g.propagation || '', bs: g.bodensee_suitability || '' },
